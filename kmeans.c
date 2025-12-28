@@ -4,6 +4,15 @@
 #include <stdlib.h>
 #include <math.h>
 
+// ------ Tasks: --------
+// 1. read the input
+// 2. float convertion function
+// Y3. variable initialization
+// Y4. find_minimal_dist_index function
+// S5. update_assignment function
+// S6. update_centroids function
+// 7. main algorithm loop
+
 // Global variables declerations
 int K, iter, N, d;
 // struct vector input_data[];
@@ -23,7 +32,10 @@ struct vector
 
 // Funtion declerations (prototypes):
 void update_assignments(void);
+void update_centroids(void);
+void find_minimal_dist_index(int i);
 
+// Main
 int main(int argc, char *argv[])
 {
     // Read params and stdin
