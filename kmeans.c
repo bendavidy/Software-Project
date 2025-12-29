@@ -30,10 +30,11 @@ struct vector
     struct node *nodes;
 };
 
-// Funtion declerations (prototypes):
+// Function declerations (prototypes):
 void update_assignments(void);
 void update_centroids(void);
 void find_minimal_dist_index(int i);
+struct node* deep_clone_nodes(struct node* node); // this function will take 
 
 // Main
 int main(int argc, char *argv[])
@@ -47,6 +48,9 @@ int main(int argc, char *argv[])
 
     struct vector *head_vec, *curr_vec, *next_vec;
     struct node *head_node, *curr_node, *next_node;
+
+    struct vector **centroids; // centroids will point to the first elem of [vector*,vector*,..,vector*] after we will allocate space later..
+
     int N = 0, d = 0;
     double n;
     char c;
@@ -88,7 +92,22 @@ int main(int argc, char *argv[])
     N = (int)(N / d);
     iter = atoi(argv[2]);
     K = atoi(argv[1]);
-    // printf("%s%d, %s%d, %s%d, %s%d", "K = ", K, "iter = ", iter, "N = ", N, "d = ", d);
+     // printf("%s%d, %s%d, %s%d, %s%d", "K = ", K, "iter = ", iter, "N = ", N, "d = ", d);
+
+    centroids = malloc(K * sizeof(struct vector*)); // allocate K spaces, now centroids is pointing to the first elem of [vector*,vector*,..,vector*]
+    next_vec = head_vec;
+    int k;
+
+    for(k = 0; k < K; k++)
+    {
+        centroids[k] = malloc(sizeof(struct vector));
+        centroids[k]->next = NULL;
+        centroids[k]->nodes = deep_clone_nodes(next_vec->nodes);
+
+        next_vec = next_vec->next; 
+    }
+
+   
 
     // main loop
 
