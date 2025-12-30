@@ -19,11 +19,8 @@ S[ ] update_centroids function
 
 /*
 Global variables declerations
+*/
 int K, iter, N, d;
-struct vector input_data[];
-each line is a linked list
-input_data is a vector of those lists
-*/  
 
 struct node
 {
@@ -36,15 +33,19 @@ struct vector
     struct node *nodes;
 };
 
+struct vector **centroids;
+struct vector *head_vec;
+int *assignments;
+
 /*
 Function declerations (prototypes):
 void update_assignments(void);
 */
 
-int find_minimal_dist_index(struct node *point_nodes, struct vector **centroids, int K);
+/*int find_minimal_dist_index()*/
 
-/*Assume N is the correct number of vectors in the dataset, I assume the dataset is valid*/
-void update_assignments(struct vector *head_vec, struct vector **centroids, int K, int N, int *assignments) 
+
+void update_assignments() 
 {
     struct vector *curr_vec;
     int i;
@@ -56,12 +57,14 @@ void update_assignments(struct vector *head_vec, struct vector **centroids, int 
    }
 
 }
-
+/*
 void update_centroids(struct vector **centroids, int K, int *assignments,struct vector *head_vec)
 {
 
-
 }
+
+*/
+
 
 
 
@@ -119,10 +122,10 @@ void print_vector_nodes(struct node *p) /*given a pointer to head of linked list
 /*Main*/ 
 int main(int argc, char *argv[])
 {
-    struct vector *head_vec, *curr_vec, *next_vec,*printed_vec;
+    struct vector *curr_vec, *next_vec,*printed_vec;
     struct node *head_node, *curr_node; /*next_node;*/
-    struct vector **centroids; /*centroids will point to the first elem of [vector*,vector*,..,vector*] after we will allocate space later..*/ 
-    int N = 0, d = 0, iter = 0, K = 0;
+    /*struct vector **centroids; centroids will point to the first elem of [vector*,vector*,..,vector*] after we will allocate space later..*/ 
+    /*int N = 0, d = 0, iter = 0, K = 0;*/
     double n;
     char c;
     int k;
@@ -251,6 +254,6 @@ int main(int argc, char *argv[])
         free(temp_vec);
     }
     free(assignments);
-    
+
     return 0;
 }
