@@ -209,7 +209,7 @@ struct vector **deep_copy_centroids(struct vector **centroids)
         }
         deep_copy[j]->next = NULL;
         deep_copy[j]->next_in_cluster = NULL;
-        deep_copy[j]->nodes = deep_clone_nodes(centroids[j]->nodes)
+        deep_copy[j]->nodes = deep_clone_nodes(centroids[j]->nodes);
     }
     return deep_copy;
 }
@@ -327,8 +327,7 @@ int main(int argc, char* argv[])
     /* --------------- Main loop --------------- */
 
     /* TODO: implement */
-    for(it = 0;it < iter; it++)
-    {
+    for (int it = 0; it < iter; it++) {
         old_centroids = deep_copy_centroids(centroids);
         update_assignments();
         update_centroids();
