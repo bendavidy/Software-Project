@@ -18,6 +18,7 @@ S[ ] add convergence condition
 
 /* --------------- Global variables declerations --------------- */
 int K, iter, N, d;
+double eps = 0.001;
 
 /* each input line (element) is represented by a vector of nodes */
 struct node
@@ -36,12 +37,28 @@ struct vector **centroids; /* centroids will point to the first elem of [vector*
 struct vector **assignments;
 struct vector *head_vec; /* indicates the head vector of the input data */
 
+
 /* --------------- Function declerations (prototypes) and implementations: --------------- */
 void update_assignments(void);
 void update_centroids(void);
 int find_minimal_dist_index(struct vector *elem); /* recieves a pointer to an element (represented by a vector) of dimension d, and returns the index of the closest centroid. */
 struct node *deep_clone_nodes(struct node *node); /* this function will take */
 
+double euclidean_dist(struct node *a, struct node *b)
+{
+    int l;
+    double sub, sum = 0.0;
+    for (l = 0; l < d; l++)
+    {
+        sub = (a->value - b->value);
+        sub = sub * sub;
+        sum += sub;
+        a = a->next;
+        b = b->next;
+    }
+    sum = sqrt(sum);
+    return sum;
+}
 int find_minimal_dist_index(struct vector *elem) /* TODO: test */
 {
     double min = INFINITY;
@@ -52,9 +69,10 @@ int find_minimal_dist_index(struct vector *elem) /* TODO: test */
     {
         cent = centroids[j];
         /* calculate euclidean distance to centroid[j] */
-        int sub, sum = 0;
+        double sum = 0;
         struct node *curr_elem_coor = elem->nodes;
         struct node *curr_cent_coor = cent->nodes;
+        /*
         for (int l = 0; l < d; l++)
         {
             sub = (curr_elem_coor->value - curr_cent_coor->value);
@@ -63,7 +81,8 @@ int find_minimal_dist_index(struct vector *elem) /* TODO: test */
             curr_elem_coor = curr_elem_coor->next;
             curr_cent_coor = curr_cent_coor->next;
         }
-        sum = sqrt(sum);
+            */
+        sum = euclidean_dist(curr_elem_coor,curr_cent_coor);
         if (sum < min)
         {
             min = sum;
@@ -130,6 +149,8 @@ void update_assignments() /* TODO: test */
     }
 }
 
+
+
 struct node *deep_clone_nodes(struct node *src_node) /* recieve a pointer to some node and return a pointer to some node */
 {
     struct node *head, *curr; /*head will point to the first node, curr will point at the end to the last node*/
@@ -154,6 +175,31 @@ struct node *deep_clone_nodes(struct node *src_node) /* recieve a pointer to som
     }
     return head;
 }
+struct vector **deep_copy_centroids(struct vector **centroids)
+{ 
+    int j;
+    struct vector **deep_copy;
+    deep_copy = malloc(K * sizeof(struct vector*));
+
+    if (deep_copy == NULL)
+    {
+        return NULL;
+    }
+
+    for(j = 0; j < K; j++)
+    {
+        deep_copy[j] = malloc(sizeof(struct vector));
+        if(deep_copy == NULL)
+        {
+            return NULL;
+        }
+        deep_copy[j]->next = NULL;
+        deep_copy[j]->next_in_cluster = NULL;
+        deep_copy[j]->nodes = deep_clone_nodes(centroids[j]->nodes)
+    }
+    return deep_copy;
+}
+
 
 void print_vector_nodes(struct node *p) /* given a pointer to head of linked list it will print the vector: f1,f2,...,fd */
 {
@@ -182,6 +228,9 @@ int main(int argc, char *argv[])
     double n;
     char c;
     struct vector *temp_vec;
+    
+    struct vector **old_centroids; /*TODO*/
+
     /* struct node *temp_node; */
     /*
     Read params and stdin
@@ -247,6 +296,7 @@ int main(int argc, char *argv[])
         centroids[k] = malloc(sizeof(struct vector));            /* each elem in [vector*,vector*,..,vector*] will have valid adress (we can store in each adress vector) */
         centroids[k]->next = NULL;                               /* each vector will be independent from the other in centroids */
         centroids[k]->nodes = deep_clone_nodes(next_vec->nodes); /* creating deep copy for each linked list */
+        centroids[k]->next_in_cluster = NULL;                    /* each vector will be independent from the other in centroids */
         next_vec = next_vec->next;
     }
 
@@ -272,6 +322,51 @@ int main(int argc, char *argv[])
     /* --------------- Main loop --------------- */
 
     /* TODO: implement */
+    for(it = 0;it < iter; it++)
+    {
+        old_centroids = deep_copy_centroids(centroids);
+        update_assignments();
+        update_centroids();
+
+        double max_shift = -INFINITY;
+        for(int j = 0; j < K; j++)
+        {
+            double shift = euclidean_dist(old_centroids[j]->nodes,centroids[j]->nodes);
+            if(shift > max_shift)
+            {
+                max_shift = shift;
+            }
+
+        }
+        if (max_shift < eps)
+            break;
+    }
+
+        /*
+        for i in range(iter):
+
+    old_centroids = [c[:] for c in centroids]
+    update_assignment()
+    update_centroids()
+    
+    max_shift = float("-inf")
+
+    for j in range(K):
+        shift = math.dist(old_centroids[j],centroids[j])
+        if shift > max_shift:
+            max_shift = shift
+
+    if max_shift < eps:
+        break
+
+for j in range(K):
+    print(",".join(f"{x:.4f}" for x in centroids[j]))
+        */
+
+
+
+    
+
 
     /* --------------- free memory --------------- */
     for (int k = 0; k < K; k++)
@@ -300,7 +395,7 @@ int main(int argc, char *argv[])
         curr_vec = curr_vec->next;
         free(temp_vec);
     }
-    free(assignments);
+    free(assignments); 
 
     return 0;
 }
