@@ -4,24 +4,21 @@
 #include <stdlib.h>
 #include <math.h>
 
-/* 
---------------- Tasks: --------------- 
- Y[X] read the input 
-[ ] float convertion function 
-Y[X] variable initialization 
-Y[ ] find_minimal_dist_index function 
-S[X] update_assignment function 
-S[ ] update_centroids function 
-[ ] main algorithm loop 
-*/ 
+// --------------- Tasks: ---------------
+// Y[X] read the input
+//  [ ] float convertion function
+// Y[X] variable initialization
+// Y[X] find_minimal_dist_index function
+// S[ ] update_assignment function
+// S[ ] update_centroids function
+//  [ ] main algorithm loop
 
-
-
-/*
-Global variables declerations
-*/
+// --------------- Global variables declerations ---------------
 int K, iter, N, d;
 
+// struct vector input_data[];
+// each line is a linked list
+// input_data is a vector of those lists
 struct node
 {
     double value;
@@ -33,19 +30,48 @@ struct vector
     struct node *nodes;
 };
 
-struct vector **centroids;
-struct vector *head_vec;
-int *assignments;
+struct vector **centroids; // centroids will point to the first elem of [vector*,vector*,..,vector*] after we will allocate space later..
+struct vector *head_vec;   // indicates the head vector of the input data
 
-/*
-Function declerations (prototypes):
+// --------------- Function declerations (prototypes) and implementations: ---------------
 void update_assignments(void);
-*/
+void update_centroids(void);
+int find_minimal_dist_index(struct vector *elem); // recieves a pointer to an element (represented by a vector) of dimension d, and returns the index of the closest centroid.
+struct node *deep_clone_nodes(struct node *node); // this function will take
 
-/*int find_minimal_dist_index()*/
+int find_minimal_dist_index(struct vector *elem) // TODO: test
+{
+    double min = INFINITY;
+    int min_index;
+    struct vector *cent;
 
+    for (int j = 0; j < K; j++)
+    {
+        cent = centroids[j];
+        // calculate euclidean distance to centroid[j]
+        int sub, sum = 0;
+        struct node *curr_elem_coor = elem->nodes;
+        struct node *curr_cent_coor = cent->nodes;
+        for (int l = 0; l < d; l++)
+        {
+            sub = (curr_elem_coor->value - curr_cent_coor->value);
+            sub = sub * sub;
+            sum += sub;
+            curr_elem_coor = curr_elem_coor->next;
+            curr_cent_coor = curr_cent_coor->next;
+        }
+        sum = sqrt(sum);
+        if (sum < min)
+        {
+            min = sum;
+            min_index = j;
+        }
+    }
+    return min_index;
+}
 
-void update_assignments() 
+// --------------- Main ---------------
+int main(int argc, char *argv[])
 {
     struct vector *curr_vec;
     int i;
@@ -190,7 +216,7 @@ int main(int argc, char *argv[])
     next_vec = head_vec;
     
 
-    for(k = 0; k < K; k++)
+    for (int k = 0; k < K; k++)
     {
         /* do we need to make sure K < number of data points ? I assume it is true */
         centroids[k] = malloc(sizeof(struct vector)); /*each elem in [vector*,vector*,..,vector*] will have valid adress (we can store in each adress vector)*/ 
