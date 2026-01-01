@@ -10,10 +10,13 @@ Y[X] variable initialization
 Y[X] find_minimal_dist_index function
 S[X] update_assignment function
 Y[X] update_centroids function
-S[ ] main algorithm loop
-S[ ] add convergence condition
-?[ ] Input validation and errors
- [ ] Test memory management
+S[X] main algorithm loop
+S[X] add convergence condition
+Y[X] Input validation and errors
+B[ ] Tests and memory management
+    - Edge cases
+    - NULL malloc/calloc operations
+    - Examine with Valgrind
 */
 
 /* --------------- Global variables declerations --------------- */
@@ -57,6 +60,7 @@ double euclidean_dist(struct node *a, struct node *b)
     sum = sqrt(sum);
     return sum;
 }
+
 int find_minimal_dist_index(struct vector *elem) /* TODO: test */
 {
     double min = INFINITY;
@@ -208,6 +212,7 @@ struct node* deep_clone_nodes(struct node* src_node) /* recieve a pointer to som
     }
     return head;
 }
+
 struct vector **deep_copy_centroids(struct vector **centroids)
 { 
     int j;
@@ -232,7 +237,6 @@ struct vector **deep_copy_centroids(struct vector **centroids)
     }
     return deep_copy;
 }
-
 
 void print_vector_nodes(struct node* p) /* given a pointer to head of linked list it will print the vector: f1,f2,...,fd */
 {
@@ -261,6 +265,7 @@ int main(int argc, char* argv[])
     struct vector *temp_vec;
     int k;
     int it;
+    char* end;
     /*struct vector **old_centroids; TODO*/
 
     /* struct node *temp_node; */
@@ -269,8 +274,19 @@ int main(int argc, char* argv[])
     TODO: add validations
     */
 
-    if (argc != 3) { 
-        printf("Hello World\n");                    /*TODO: print out error and exit (C tutorial → atoi)*/        
+    if (argc != 3) {
+        if (argc == 2) {
+            iter = 400;
+        } else {
+            printf("%s", "An Error Has Occurred\n");
+            exit(1);
+        }
+    } else {
+        iter = strtol(argv[2], &end, 10);
+        if ((end == argv[2]) || (*end != '\0') || (iter <= 1) || (iter >= 800)) {
+            printf("%s", "Incorrect maximum iteration!\n");
+            exit(1);
+        }
     }
 
     head_node = malloc(sizeof(struct node));
@@ -307,14 +323,19 @@ int main(int argc, char* argv[])
     }
 
     N = (int)(N / d);
-    iter = atoi(argv[2]);
-    iter = iter + 0;
-    K = atoi(argv[1]);
-    /* printf("%s%d, %s%d, %s%d, %s%d", "K = ", K, "iter = ", iter, "N = ", N, "d = ", d); */
+    K = strtol(argv[1], &end, 10);
+    if ((end == argv[1]) || (*end != '\0') || (K <= 1) || (K >= N)) {
+        printf("%s", "Incorrect number of clusters!\n");
+        exit(1);
+    }
 
     /* assignments = malloc(N * sizeof(int)); */
     assignments = malloc(K * sizeof(struct vector*)); /* assignments[j] points to the element that starts the cluster */
     centroids = malloc(K * sizeof(struct vector*)); /* allocate K spaces, now centroids is pointing to the first elem of [vector*,vector*,..,vector*] */
+    if ((assignments == NULL) || (centroids == NULL)) {
+        printf("%s", "An Error Has Occurred\n");
+        exit(1);
+    }
     next_vec = head_vec;
 
     for (k = 0; k < K; k++) {
@@ -370,9 +391,8 @@ int main(int argc, char* argv[])
             break;
     }
 
-    printf("CENTROIDS:\n"); /* print the centroids.. centroid \n centroid \n ... */
     for (k = 0; k < K; k++) {
-        printf("centroid %d: ", k);
+        /* printf("centroid %d: ", k); */
         print_vector_nodes(centroids[k]->nodes);
         printf("\n");
     }
