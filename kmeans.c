@@ -62,13 +62,17 @@ int find_minimal_dist_index(struct vector *elem) /* TODO: test */
     double min = INFINITY;
     int min_index;
     struct vector* cent;
+    int j;
 
-    for (int j = 0; j < K; j++) {
+    for (j = 0; j < K; j++) {
+        double sum;
+        struct node *curr_elem_coor;
+        struct node *curr_cent_coor;
         cent = centroids[j];
         /* calculate euclidean distance to centroid[j] */
-        double sum = 0;
-        struct node *curr_elem_coor = elem->nodes;
-        struct node *curr_cent_coor = cent->nodes;
+        sum = 0;
+        curr_elem_coor = elem->nodes;
+        curr_cent_coor = cent->nodes;
         /*
         for (int l = 0; l < d; l++)
         {
@@ -79,6 +83,7 @@ int find_minimal_dist_index(struct vector *elem) /* TODO: test */
             curr_cent_coor = curr_cent_coor->next;
         }
             */
+        sum = 0;
         sum = euclidean_dist(curr_elem_coor,curr_cent_coor);
         if (sum < min)
         {
@@ -103,10 +108,14 @@ double update_centroids() /* TODO: test */
 {
     double* coor_sum = calloc(d, sizeof(double));
     double delta, max_delta = -INFINITY;
-    int size, index;
+    int size; /*,index;*/
     struct vector *curr_cluster_elem, *curr_cent_vec, *old_cent_vec;
     struct node *curr_node, *cent_node;
-    for (int j = 0; j < K; j++) {
+    int j;
+
+    old_cent_vec = malloc(sizeof(struct vector));
+
+    for (j = 0; j < K; j++) {
         curr_cent_vec = centroids[j];
         old_cent_vec->nodes = deep_clone_nodes(centroids[j]->nodes);
         cent_node = centroids[j]->nodes;
@@ -114,11 +123,13 @@ double update_centroids() /* TODO: test */
         size = 0;
         curr_cluster_elem = assignments[j];
         while (curr_cluster_elem != NULL) {
+            /*int sum;*/
+            int l;
             curr_node = curr_cluster_elem->nodes;
             size++;
-            int sum = 0;
+            /*sum = 0;*/
             /* calculate avarage on every coordinate and update cent_node->value */
-            for (int l = 0; l < d; l++) {
+            for (l = 0; l < d; l++) {
                 coor_sum[l] += curr_node->value;
                 curr_node = curr_node->next;
             }
@@ -126,39 +137,47 @@ double update_centroids() /* TODO: test */
         }
         if (size == 0) {
             /* empty cluster - reassign to first element in data */
-            for (int l = 0; l < d; l++) {
+            int l;
+            for (l = 0; l < d; l++) {
                 cent_node->value = head_vec->nodes->value;
                 cent_node = cent_node->next;
                 coor_sum[l] = 0; /* prepare for next iteration */
             }
         } else {
-            for (int l = 0; l < d; l++) {
+            int l;
+            for (l = 0; l < d; l++) {
                 cent_node->value = coor_sum[l] / size;
                 cent_node = cent_node->next;
                 coor_sum[l] = 0; /* prepare for next iteration */
             }
         }
 
+
         /* calculate the change delta of centroids[j] */
-        delta = euclidean_dist(curr_cent_vec, old_cent_vec); /*TODO: implement*/
+        delta = euclidean_dist(curr_cent_vec->nodes, old_cent_vec->nodes); /*TODO: implement*/
         if (max_delta < delta) {
             max_delta = delta;
         }
-        free(old_cent_vec->nodes);
-        free(old_cent_vec);
+        free_nodes(old_cent_vec->nodes);
     }
+
+    free(old_cent_vec);
     free(coor_sum);
+    return max_delta;
 }
 
 void update_assignments() /* TODO: test */
 {
     /* reset assignments and calculate them again */
-    for (int j = 0; j < K; j++) {
+    int j;
+    int i;
+    struct vector* curr_vec;
+    for (j = 0; j < K; j++) {
         assignments[j] = NULL;
     }
-    struct vector* curr_vec;
+    
     curr_vec = head_vec;
-    for (int i = 0; i < N; i++) {
+    for (i = 0; i < N; i++) {
         int index = find_minimal_dist_index(curr_vec);
         curr_vec->next_in_cluster = assignments[index];
         assignments[index] = curr_vec;
@@ -233,15 +252,16 @@ void print_vector_nodes(struct node* p) /* given a pointer to head of linked lis
 /* --------------- Main --------------- */
 int main(int argc, char* argv[])
 {
-    struct vector *curr_vec, *next_vec, *printed_vec;
+    struct vector *curr_vec, *next_vec; /*, *printed_vec;*/
     struct node *head_node, *curr_node; /* next_node; */
     /* struct vector **centroids; centroids will point to the first elem of [vector*,vector*,..,vector*] after we will allocate space later.. */
     /* int N = 0, d = 0, iter = 0, K = 0; */
     double n;
     char c;
     struct vector *temp_vec;
-    
-    struct vector **old_centroids; /*TODO*/
+    int k;
+    int it;
+    /*struct vector **old_centroids; TODO*/
 
     /* struct node *temp_node; */
     /*
@@ -249,9 +269,8 @@ int main(int argc, char* argv[])
     TODO: add validations
     */
 
-    if (argc != 3) { /*
-                        TODO: print out error and exit (C tutorial → atoi)
-                     */
+    if (argc != 3) { 
+        printf("Hello World\n");                    /*TODO: print out error and exit (C tutorial → atoi)*/        
     }
 
     head_node = malloc(sizeof(struct node));
@@ -298,7 +317,7 @@ int main(int argc, char* argv[])
     centroids = malloc(K * sizeof(struct vector*)); /* allocate K spaces, now centroids is pointing to the first elem of [vector*,vector*,..,vector*] */
     next_vec = head_vec;
 
-    for (int k = 0; k < K; k++) {
+    for (k = 0; k < K; k++) {
         /* do we need to make sure K < number of data points ? I assume it is true */
         centroids[k] = malloc(sizeof(struct vector)); /* each elem in [vector*,vector*,..,vector*] will have valid adress (we can store in each adress vector) */
         centroids[k]->next = NULL; /* each vector will be independent from the other in centroids */
@@ -308,32 +327,34 @@ int main(int argc, char* argv[])
     }
 
     /* Prints for tests */
-    printf("CENTROIDS:\n"); /* print the centroids.. centroid \n centroid \n ... */
-    for (int k = 0; k < K; k++) {
-        printf("centroid %d: ", k);
-        print_vector_nodes(centroids[k]->nodes);
-        printf("\n");
-    }
 
-    printed_vec = head_vec;
-    printf("VECTORS:\n");
-    for (int k = 0; k < 10; k++) {
-        printf("vector %d: ", k);
-        print_vector_nodes(printed_vec->nodes);
-        printf("\n");
-        printed_vec = printed_vec->next;
+   
+    /*
+        printed_vec = head_vec;
+        printf("VECTORS:\n");
+        for (int k = 0; k < 10; k++) {
+            printf("vector %d: ", k);
+            print_vector_nodes(printed_vec->nodes);
+            printf("\n");
+            printed_vec = printed_vec->next;
     }
+    
+    
+    */
+    
 
     /* --------------- Main loop --------------- */
 
     /* TODO: implement */
-    for (int it = 0; it < iter; it++) {
-        old_centroids = deep_copy_centroids(centroids);
+    for (it = 0; it < iter; it++) {
+        double max_shift;
+        /*int j;*/
+        /*old_centroids = deep_copy_centroids(centroids);*/
         update_assignments();
-        update_centroids();
-
-        double max_shift = -INFINITY;
-        for(int j = 0; j < K; j++)
+        max_shift = update_centroids();
+        /*
+            max_shift = -INFINITY;
+        for(j = 0; j < K; j++)
         {
             double shift = euclidean_dist(old_centroids[j]->nodes,centroids[j]->nodes);
             if(shift > max_shift)
@@ -344,6 +365,16 @@ int main(int argc, char* argv[])
         }
         if (max_shift < eps)
             break;
+        */
+        if (max_shift < eps)
+            break;
+    }
+
+    printf("CENTROIDS:\n"); /* print the centroids.. centroid \n centroid \n ... */
+    for (k = 0; k < K; k++) {
+        printf("centroid %d: ", k);
+        print_vector_nodes(centroids[k]->nodes);
+        printf("\n");
     }
 
         /*
@@ -373,7 +404,7 @@ for j in range(K):
 
 
     /* --------------- free memory --------------- */
-    for (int k = 0; k < K; k++) {
+    for (k = 0; k < K; k++) {
         free_nodes(centroids[k]->nodes); /* free the linked list of the k'th vector */
         free(centroids[k]); /* free the k'th vector */
     }
