@@ -13,7 +13,7 @@ Y[X] update_centroids function
 S[X] main algorithm loop
 S[X] add convergence condition
 Y[X] Input validation and errors
-B[ ] Tests and memory management
+B[X] Tests and memory management
     - Edge cases
     - NULL malloc/calloc operations
     - Examine with Valgrind
@@ -45,8 +45,7 @@ double update_centroids(void); /* updates centroids and returns the max delta in
 int find_minimal_dist_index(struct vector* elem); /* recieves a pointer to an element (represented by a vector) of dimension d, and returns the index of the closest centroid. */
 struct node* deep_clone_nodes(struct node* node); /* this function will take */
 
-/*
-    void *check_alloc(void *p)
+void* check_alloc(void* p)
 {
     if (p == NULL) {
         printf("An Error Has Occurred\n");
@@ -54,8 +53,6 @@ struct node* deep_clone_nodes(struct node* node); /* this function will take */
     }
     return p;
 }
-
-*/
 
 double euclidean_dist(struct node *a, struct node *b)
 {
@@ -73,7 +70,7 @@ double euclidean_dist(struct node *a, struct node *b)
     return sum;
 }
 
-int find_minimal_dist_index(struct vector *elem) /* TODO: test */
+int find_minimal_dist_index(struct vector* elem)
 {
     double min = INFINITY;
     int min_index;
@@ -89,17 +86,6 @@ int find_minimal_dist_index(struct vector *elem) /* TODO: test */
         sum = 0;
         curr_elem_coor = elem->nodes;
         curr_cent_coor = cent->nodes;
-        /*
-        for (int l = 0; l < d; l++)
-        {
-            sub = (curr_elem_coor->value - curr_cent_coor->value);
-            sub = sub * sub;
-            sum += sub;
-            curr_elem_coor = curr_elem_coor->next;
-            curr_cent_coor = curr_cent_coor->next;
-        }
-            */
-        sum = 0;
         sum = euclidean_dist(curr_elem_coor,curr_cent_coor);
         if (sum < min)
         {
@@ -120,16 +106,16 @@ void free_nodes(struct node* head)
     }
 }
 
-double update_centroids() /* TODO: test */
+double update_centroids()
 {
-    double* coor_sum = calloc(d, sizeof(double));
+    double* coor_sum = check_alloc(calloc(d, sizeof(double)));
     double delta, max_delta = -INFINITY;
     int size; /*,index;*/
     struct vector *curr_cluster_elem, *curr_cent_vec, *old_cent_vec;
     struct node *curr_node, *cent_node;
     int j;
 
-    old_cent_vec = malloc(sizeof(struct vector));
+    old_cent_vec = check_alloc(malloc(sizeof(struct vector)));
 
     for (j = 0; j < K; j++) {
         curr_cent_vec = centroids[j];
@@ -139,11 +125,9 @@ double update_centroids() /* TODO: test */
         size = 0;
         curr_cluster_elem = assignments[j];
         while (curr_cluster_elem != NULL) {
-            /*int sum;*/
             int l;
             curr_node = curr_cluster_elem->nodes;
             size++;
-            /*sum = 0;*/
             /* calculate avarage on every coordinate and update cent_node->value */
             for (l = 0; l < d; l++) {
                 coor_sum[l] += curr_node->value;
@@ -154,9 +138,11 @@ double update_centroids() /* TODO: test */
         if (size == 0) {
             /* empty cluster - reassign to first element in data */
             int l;
+            curr_node = head_vec->nodes;
             for (l = 0; l < d; l++) {
-                cent_node->value = head_vec->nodes->value;
+                cent_node->value = curr_node->value;
                 cent_node = cent_node->next;
+                curr_node = curr_node->next;
                 coor_sum[l] = 0; /* prepare for next iteration */
             }
         } else {
@@ -168,9 +154,8 @@ double update_centroids() /* TODO: test */
             }
         }
 
-
         /* calculate the change delta of centroids[j] */
-        delta = euclidean_dist(curr_cent_vec->nodes, old_cent_vec->nodes); /*TODO: implement*/
+        delta = euclidean_dist(curr_cent_vec->nodes, old_cent_vec->nodes);
         if (max_delta < delta) {
             max_delta = delta;
         }
@@ -182,7 +167,7 @@ double update_centroids() /* TODO: test */
     return max_delta;
 }
 
-void update_assignments() /* TODO: test */
+void update_assignments()
 {
     /* reset assignments and calculate them again */
     int j;
@@ -207,7 +192,7 @@ struct node* deep_clone_nodes(struct node* src_node) /* recieve a pointer to som
 
     /* if(src_node == NULL) return NULL; i'm not sure if that line is needed */
 
-    head = malloc(sizeof(struct node));
+    head = check_alloc(malloc(sizeof(struct node)));
 
     head->value = src_node->value;
     head->next = NULL;
@@ -216,38 +201,13 @@ struct node* deep_clone_nodes(struct node* src_node) /* recieve a pointer to som
     src_node = src_node->next;
 
     while (src_node != NULL) {
-        curr->next = malloc(sizeof(struct node));
+        curr->next = check_alloc(malloc(sizeof(struct node)));
         curr = curr->next;
         curr->value = src_node->value;
         curr->next = NULL;
         src_node = src_node->next;
     }
     return head;
-}
-
-struct vector **deep_copy_centroids(struct vector **centroids)
-{ 
-    int j;
-    struct vector **deep_copy;
-    deep_copy = malloc(K * sizeof(struct vector*));
-
-    if (deep_copy == NULL)
-    {
-        return NULL;
-    }
-
-    for(j = 0; j < K; j++)
-    {
-        deep_copy[j] = malloc(sizeof(struct vector));
-        if(deep_copy == NULL)
-        {
-            return NULL;
-        }
-        deep_copy[j]->next = NULL;
-        deep_copy[j]->next_in_cluster = NULL;
-        deep_copy[j]->nodes = deep_clone_nodes(centroids[j]->nodes);
-    }
-    return deep_copy;
 }
 
 void print_vector_nodes(struct node* p) /* given a pointer to head of linked list it will print the vector: f1,f2,...,fd */
@@ -269,22 +229,14 @@ void print_vector_nodes(struct node* p) /* given a pointer to head of linked lis
 int main(int argc, char* argv[])
 {
     struct vector *curr_vec, *next_vec; /*, *printed_vec;*/
-    struct node *head_node, *curr_node; /* next_node; */
+    struct node *head_node, *curr_node, *final_node; /* next_node; */
     /* struct vector **centroids; centroids will point to the first elem of [vector*,vector*,..,vector*] after we will allocate space later.. */
-    /* int N = 0, d = 0, iter = 0, K = 0; */
     double n;
     char c;
     struct vector *temp_vec;
     int k;
     int it;
     char* end;
-    /*struct vector **old_centroids; TODO*/
-
-    /* struct node *temp_node; */
-    /*
-    Read params and stdin
-    TODO: add validations
-    */
 
     if (argc != 3) {
         if (argc == 2) {
@@ -301,11 +253,11 @@ int main(int argc, char* argv[])
         }
     }
 
-    head_node = malloc(sizeof(struct node));
+    head_node = check_alloc(malloc(sizeof(struct node)));
     curr_node = head_node;
     curr_node->next = NULL;
 
-    head_vec = malloc(sizeof(struct vector));
+    head_vec = check_alloc(malloc(sizeof(struct vector)));
     curr_vec = head_vec;
     curr_vec->next = NULL;
 
@@ -314,12 +266,14 @@ int main(int argc, char* argv[])
         if (c == '\n') {
             curr_node->value = n;
             curr_vec->nodes = head_node;
-            curr_vec->next = malloc(sizeof(struct vector));
+            curr_vec->next = check_alloc(malloc(sizeof(struct vector)));
             curr_vec = curr_vec->next;
+
             curr_vec->next = NULL;
             curr_vec->next_in_cluster = NULL;
             curr_vec->nodes = NULL; /*New line-Shalev*/
-            head_node = malloc(sizeof(struct node));
+
+            head_node = check_alloc(malloc(sizeof(struct node)));
             curr_node = head_node;
             curr_node->next = NULL;
             if (d == 0) {
@@ -329,10 +283,11 @@ int main(int argc, char* argv[])
         }
 
         curr_node->value = n;
-        curr_node->next = malloc(sizeof(struct node));
+        curr_node->next = check_alloc(malloc(sizeof(struct node)));
         curr_node = curr_node->next;
         curr_node->next = NULL;
     }
+    final_node = head_node;
 
     N = (int)(N / d);
     K = strtol(argv[1], &end, 10);
@@ -342,8 +297,8 @@ int main(int argc, char* argv[])
     }
 
     /* assignments = malloc(N * sizeof(int)); */
-    assignments = malloc(K * sizeof(struct vector*)); /* assignments[j] points to the element that starts the cluster */
-    centroids = malloc(K * sizeof(struct vector*)); /* allocate K spaces, now centroids is pointing to the first elem of [vector*,vector*,..,vector*] */
+    assignments = check_alloc(malloc(K * sizeof(struct vector*))); /* assignments[j] points to the element that starts the cluster */
+    centroids = check_alloc(malloc(K * sizeof(struct vector*))); /* allocate K spaces, now centroids is pointing to the first elem of [vector*,vector*,..,vector*] */
     if ((assignments == NULL) || (centroids == NULL)) {
         printf("%s", "An Error Has Occurred\n");
         exit(1);
@@ -352,109 +307,45 @@ int main(int argc, char* argv[])
 
     for (k = 0; k < K; k++) {
         /* do we need to make sure K < number of data points ? I assume it is true */
-        centroids[k] = malloc(sizeof(struct vector)); /* each elem in [vector*,vector*,..,vector*] will have valid adress (we can store in each adress vector) */
+        centroids[k] = check_alloc(malloc(sizeof(struct vector))); /* each elem in [vector*,vector*,..,vector*] will have valid adress (we can store in each adress vector) */
         centroids[k]->next = NULL; /* each vector will be independent from the other in centroids */
         centroids[k]->nodes = deep_clone_nodes(next_vec->nodes); /* creating deep copy for each linked list */
         centroids[k]->next_in_cluster = NULL;                    /* each vector will be independent from the other in centroids */
         next_vec = next_vec->next;
     }
 
-    /* Prints for tests */
-
-   
-    /*
-        printed_vec = head_vec;
-        printf("VECTORS:\n");
-        for (int k = 0; k < 10; k++) {
-            printf("vector %d: ", k);
-            print_vector_nodes(printed_vec->nodes);
-            printf("\n");
-            printed_vec = printed_vec->next;
-    }
-    
-    
-    */
-    
-
     /* --------------- Main loop --------------- */
-
-    /* TODO: implement */
     for (it = 0; it < iter; it++) {
         double max_shift;
-        /*int j;*/
-        /*old_centroids = deep_copy_centroids(centroids);*/
         update_assignments();
         max_shift = update_centroids();
-        /*
-            max_shift = -INFINITY;
-        for(j = 0; j < K; j++)
-        {
-            double shift = euclidean_dist(old_centroids[j]->nodes,centroids[j]->nodes);
-            if(shift > max_shift)
-            {
-                max_shift = shift;
-            }
-
-        }
-        if (max_shift < eps)
-            break;
-        */
         if (max_shift < eps)
             break;
     }
 
+    /* print output onscreen */
     for (k = 0; k < K; k++) {
-        /* printf("centroid %d: ", k); */
         print_vector_nodes(centroids[k]->nodes);
         printf("\n");
     }
-
-        /*
-        for i in range(iter):
-
-    old_centroids = [c[:] for c in centroids]
-    update_assignment()
-    update_centroids()
-    
-    max_shift = float("-inf")
-
-    for j in range(K):
-        shift = math.dist(old_centroids[j],centroids[j])
-        if shift > max_shift:
-            max_shift = shift
-
-    if max_shift < eps:
-        break
-
-for j in range(K):
-    print(",".join(f"{x:.4f}" for x in centroids[j]))
-        */
 
     /* --------------- free memory --------------- */
     for (k = 0; k < K; k++) {
         free_nodes(centroids[k]->nodes); /* free the linked list of the k'th vector */
         free(centroids[k]); /* free the k'th vector */
     }
-    free(centroids); /* free the array of pointers.. */
+    free(centroids); /* free the array of pointers */
+    free(assignments); /* free the array of pointers */
 
     curr_vec = head_vec;
     while (curr_vec != NULL) {
         head_node = curr_vec->nodes;
         free_nodes(head_node);
-
-        /*
-        while (curr_node != NULL)
-        {
-            temp_node = curr_node;
-            curr_node = curr_node->next;
-            free(temp_node);
-        }
-        */
         temp_vec = curr_vec;
         curr_vec = curr_vec->next;
         free(temp_vec);
     }
-    free(assignments); 
+    free(final_node);
 
     return 0;
 }
