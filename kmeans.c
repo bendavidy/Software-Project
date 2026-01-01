@@ -45,6 +45,18 @@ double update_centroids(void); /* updates centroids and returns the max delta in
 int find_minimal_dist_index(struct vector* elem); /* recieves a pointer to an element (represented by a vector) of dimension d, and returns the index of the closest centroid. */
 struct node* deep_clone_nodes(struct node* node); /* this function will take */
 
+/*
+    void *check_alloc(void *p)
+{
+    if (p == NULL) {
+        printf("An Error Has Occurred\n");
+        exit(1);
+    }
+    return p;
+}
+
+*/
+
 double euclidean_dist(struct node *a, struct node *b)
 {
     int l;
@@ -417,11 +429,6 @@ int main(int argc, char* argv[])
 for j in range(K):
     print(",".join(f"{x:.4f}" for x in centroids[j]))
         */
-
-
-
-    
-
 
     /* --------------- free memory --------------- */
     for (k = 0; k < K; k++) {
