@@ -6,6 +6,11 @@ import math
 
 default_iter = 300
 
+# ------------------ Functions ------------------
+def terminate(msg):
+    print(msg)
+    sys.exit(1) # terminate the program
+
 def parse_args(argv):
     if len(argv) == 5:  # script + 4 args: K eps file1 file2
         K = int(argv[1])
@@ -23,22 +28,12 @@ def parse_args(argv):
         terminate("An Error Has Occurred")  # safe fallback if args count is wrong
     return K, it, eps, file1, file2
 
-
-K, iter, eps, file1, file2 = parse_args(sys.argv)
-
-
-def terminate(msg):
-    print(msg)
-    sys.exit(1) # terminate the program
-
-
 def min_dist(point,points,centroids_idx):
     centroids = points[centroids_idx] # if centroids_idx = [i1,i2,i3] then centroids is [points[i1],points[i2],points[i3]]
     dist_sq = np.sum((centroids - point) ** 2, axis=1) #if centroids = [c1,c2,c3], point = p then dist_sq = [D(c1,p)^2, D(c2,p)^2,D(c3,p)^2]
     min_dist = float(np.sqrt(np.min(dist_sq))) #easy to see. take min over centroids and then take sqrt.
     return min_dist #the minimal distance between a given point to some centorid in centroids.
 
-                     
 def join_and_sort(file1, file2):
     df1 = pd.read_csv(file1, header=None)
     df2 = pd.read_csv(file2, header=None)
@@ -47,21 +42,6 @@ def join_and_sort(file1, file2):
     merged = merged.sort_values(by=0)
 
     return merged
-
-points = join_and_sort(file1,file2).iloc[:,1:].to_numpy(dtype=np.float64)
-
-N = points.shape[0]
-
-if not (1 < K < N):
-    terminate("Incorrect number of clusters!")
-
-
-if not (1 < iter < 800):
-    terminate("Incorrect maximum iteration!")
-
-
-if eps < 0:
-    terminate("Incorrect epsilon!")
 
 def kmeans_pp(points, K):
     centroids_idx = []
@@ -86,7 +66,22 @@ def kmeans_pp(points, K):
 
     init_centroids = np.ascontiguousarray(points[centroids_idx, :], dtype=np.float64)
     return centroids_idx, init_centroids
-        
+
+
+# ------------------ Main Logic ------------------
+K, iter, eps, file1, file2 = parse_args(sys.argv)
+points = join_and_sort(file1,file2).iloc[:,1:].to_numpy(dtype=np.float64)
+
+N = points.shape[0]
+
+if not (1 < K < N):
+    terminate("Incorrect number of clusters!")
+
+if not (1 < iter < 800):
+    terminate("Incorrect maximum iteration!")
+
+if eps < 0:
+    terminate("Incorrect epsilon!")
 
 print(kmeans_pp(points,K))
 
