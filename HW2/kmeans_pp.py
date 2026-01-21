@@ -4,6 +4,10 @@ import mykmeanssp as k  # still works with the warning - as long as we launched 
 import sys
 import math
 
+# TODO:
+# [ ] fix memory management issues
+# [ ] add proper exception handling from C module
+
 default_iter = 300
 
 # ------------------ Functions ------------------
@@ -73,6 +77,7 @@ K, iter, eps, file1, file2 = parse_args(sys.argv)
 points = join_and_sort(file1,file2).iloc[:,1:].to_numpy(dtype=np.float64)
 
 N = points.shape[0]
+d = points.shape[1]
 
 if not (1 < K < N):
     terminate("Incorrect number of clusters!")
@@ -83,11 +88,21 @@ if not (1 < iter < 800):
 if eps < 0:
     terminate("Incorrect epsilon!")
 
-print(kmeans_pp(points,K))
+
+
+centroids_idx, init_centroids = kmeans_pp(points,K)
+centroids_idx_str = [str(centroids_idx[i]) for i in range(K)]
+
+print(','.join(centroids_idx_str))
+
+points_list = points.tolist()   # list[list[float]]
+init_centroids_list = init_centroids.tolist()   # list[float]
+
+centroids = k.fit(points_list, init_centroids_list, N, d, K, iter, eps)
+print(centroids)
 
 
 
-#print(points)
 #print(join_and_sort(file1,file2))
 
 #print(f"fit() returned {k.fit(5,6)}")   # currently adds the two integers in C
