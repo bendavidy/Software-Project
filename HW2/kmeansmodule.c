@@ -1,6 +1,13 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h> // still works with the warning
 
+#include "kmeans.h"
+
+// --------------- Global variables ---------------
+int N, K, iter, d;
+double eps;
+struct vector* head_vec; /* indicates the head vector of the input data */
+
 // --------------- C Function ---------------
 double geo_c(double z, int n)
 {
@@ -13,7 +20,8 @@ double geo_c(double z, int n)
     return geo_sum;
 }
 
-int fit_c(int a, int b) { return a + b; }
+// TODO: change input
+int fit_c(int a, int b) { return 0; }
 
 // --------------- Function Wrappers ---------------
 // We would like to interface the geo_c function so one can call it from Python.
@@ -36,21 +44,92 @@ static PyObject* geo_sum(PyObject* self, PyObject* args)
 }
 
 static PyObject* fit(PyObject* self, PyObject* args)
+// TODO: add exception handler
 {
-    int a;
-    int b;
+    PyObject *points, *elem, *init_centroids, *final_centroids;
+    double node_value;
+    struct vector** centroids; /* centroids will point to the first elem of [vector*,vector*,..,vector*] after we will allocate space later.. */
+    struct vector *curr_vec, *next_vec, *temp_vec;
+    struct node *head_node, *curr_node, *final_node;
+
     /* This parses the Python arguments into a double (d)  variable named z and
      * int (i) variable named n*/
-    if (!PyArg_ParseTuple(args, "ii", &a, &b)) {
+    if (!PyArg_ParseTuple(args, "OOiiiid", &points, &init_centroids, &N, &d, &K, &iter, &eps)) {
         return NULL; /* In the CPython API, a NULL value is never valid for a
                         PyObject* so it is used to signal that an error has
                         occurred. */
     }
 
-    /* This builds the answer ("d" = Convert a C double to a Python floating point
-     * number) back into a python object */
-    return Py_BuildValue(
-        "i", fit_c(a, b)); /*  Py_BuildValue(...) returns a PyObject*  */
+    head_node = check_alloc(malloc(sizeof(struct node)));
+    curr_node = head_node;
+    curr_node->next = NULL;
+
+    head_vec = check_alloc(malloc(sizeof(struct vector)));
+    curr_vec = head_vec;
+    curr_vec->next = NULL;
+
+    // Convert the python data to our vectors & nodes format
+    for (int i = 0; i < N; i++) {
+        elem = PyList_GetItem(points, i);
+        // printf("%s%d%s%d%s%f\n", "i = ", i, ", first value of elem ", i, " is ", PyFloat_AsDouble(PyList_GetItem(elem, 0)));
+        for (int j = 0; j < d - 1; j++) {
+            node_value = PyFloat_AsDouble(PyList_GetItem(elem, j));
+            // printf("\t%s%d%s%f\n", "value in ", j, " place is ", node_value);
+            curr_node->value = node_value;
+            curr_node->next = check_alloc(malloc(sizeof(struct node)));
+            curr_node = curr_node->next;
+            curr_node->next = NULL;
+        }
+        node_value = PyFloat_AsDouble(PyList_GetItem(elem, d - 1));
+        curr_node->value = node_value;
+        curr_vec->nodes = head_node;
+        curr_vec->next = check_alloc(malloc(sizeof(struct vector)));
+        curr_vec = curr_vec->next;
+
+        curr_vec->next = NULL;
+        curr_vec->next_in_cluster = NULL;
+        curr_vec->nodes = NULL; /*New line-Shalev*/
+
+        head_node = check_alloc(malloc(sizeof(struct node)));
+        curr_node = head_node;
+        curr_node->next = NULL;
+        continue;
+    }
+    final_node = head_node; // for memory clearing
+
+    // Test prints
+    printf("VECTORS:\n");
+    curr_vec = head_vec;
+    curr_node = curr_vec->nodes;
+    for (int k = 0; k < 10; k++) {
+        printf("vector %d: ", k);
+        int first = 1;
+        while (curr_node != NULL) {
+            if (!first) {
+                printf(",");
+            }
+            printf("%.4f", curr_node->value);
+            first = 0;
+            curr_node = curr_node->next;
+        }
+        printf("\n");
+        curr_vec = curr_vec->next;
+        curr_node = curr_vec->nodes;
+    }
+
+    // Processing output
+    centroids = kmeans();
+    final_centroids = Py_BuildValue("O", centroids); /*  Py_BuildValue(...) returns a PyObject*  */
+
+    // Freeing memory
+    free(final_node);
+    for (int k = 0; k < K; k++) {
+        free_nodes(centroids[k]->nodes); /* free the linked list of the k'th vector */
+        free(centroids[k]); /* free the k'th vector */
+    }
+    free(centroids);
+
+    return final_centroids;
 }
 
 // Telling python interpreter what methods we have in the module.
