@@ -7,6 +7,7 @@
 int N, K, iter, d;
 double eps;
 struct vector* head_vec; /* indicates the head vector of the input data */
+struct vector** init_centroids;
 
 // --------------- C Function ---------------
 double geo_c(double z, int n)
@@ -46,15 +47,17 @@ static PyObject* geo_sum(PyObject* self, PyObject* args)
 static PyObject* fit(PyObject* self, PyObject* args)
 // TODO: add exception handler
 {
-    PyObject *points, *elem, *init_centroids, *final_centroids;
+    PyObject *points, *elem, *init_centroids_py, *final_centroids, *curr_cent_py;
     double node_value;
     struct vector** centroids; /* centroids will point to the first elem of [vector*,vector*,..,vector*] after we will allocate space later.. */
-    struct vector *curr_vec, *next_vec, *temp_vec;
+    struct vector *curr_vec, *next_vec;
     struct node *head_node, *curr_node, *final_node;
+
+    // init_centroids = [ [vector], [vector], .... ]
 
     /* This parses the Python arguments into a double (d)  variable named z and
      * int (i) variable named n*/
-    if (!PyArg_ParseTuple(args, "OOiiiid", &points, &init_centroids, &N, &d, &K, &iter, &eps)) {
+    if (!PyArg_ParseTuple(args, "OOiiiid", &points, &init_centroids_py, &N, &d, &K, &iter, &eps)) {
         return NULL; /* In the CPython API, a NULL value is never valid for a
                         PyObject* so it is used to signal that an error has
                         occurred. */
@@ -97,6 +100,32 @@ static PyObject* fit(PyObject* self, PyObject* args)
     }
     final_node = head_node; // for memory clearing
 
+    // Converting init_centroids to C format
+    init_centroids = check_alloc(malloc(K * sizeof(struct vector*))); /* allocate K spaces, now centroids is pointing to the first elem of [vector*,vector*,..,vector*] */
+    // next_vec = head_vec;
+
+    for (int k = 0; k < K; k++) {
+        curr_cent_py = PyList_GetItem(init_centroids_py, k);
+        init_centroids[k] = check_alloc(malloc(sizeof(struct vector))); /* each elem in [vector*,vector*,..,vector*] will have valid adress (we can store in each adress vector) */
+        init_centroids[k]->next = NULL; /* each vector will be independent from the other in centroids */
+        init_centroids[k]->next_in_cluster = NULL; /* each vector will be independent from the other in centroids */
+        // centroids[k]->nodes = deep_clone_nodes(next_vec->nodes); /* creating deep copy for each linked list */
+        curr_node = check_alloc(malloc(sizeof(struct node)));
+        init_centroids[k]->nodes = curr_node;
+        for (int j = 0; j < d - 1; j++) {
+            node_value = PyFloat_AsDouble(PyList_GetItem(curr_cent_py, j));
+            // printf("\t%s%d%s%f\n", "value in ", j, " place is ", node_value);
+            curr_node->value = node_value;
+            curr_node->next = check_alloc(malloc(sizeof(struct node)));
+            curr_node = curr_node->next;
+            curr_node->next = NULL;
+        }
+        node_value = PyFloat_AsDouble(PyList_GetItem(curr_cent_py, d - 1));
+        // printf("\t%s%d%s%f\n", "value in ", j, " place is ", node_value);
+        curr_node->value = node_value;
+        curr_node->next = NULL;
+    }
+
     // Test prints
     printf("VECTORS:\n");
     curr_vec = head_vec;
@@ -119,15 +148,28 @@ static PyObject* fit(PyObject* self, PyObject* args)
 
     // Processing output
     centroids = kmeans();
+    printf("After kmeans return");
     final_centroids = Py_BuildValue("O", centroids); /*  Py_BuildValue(...) returns a PyObject*  */
 
     // Freeing memory
     free(final_node);
     for (int k = 0; k < K; k++) {
         free_nodes(centroids[k]->nodes); /* free the linked list of the k'th vector */
+        free_nodes(init_centroids[k]->nodes); /* free the linked list of the k'th vector */
         free(centroids[k]); /* free the k'th vector */
+        free(init_centroids[k]); /* free the k'th vector */
     }
     free(centroids);
+    free(init_centroids);
+
+    // curr_vec = head_vec;
+    // while (curr_vec != NULL) {
+    //     head_node = curr_vec->nodes;
+    //     free_nodes(head_node);
+    //     temp_vec = curr_vec;
+    //     curr_vec = curr_vec->next;
+    //     free(temp_vec);
+    // }
 
     return final_centroids;
 }
