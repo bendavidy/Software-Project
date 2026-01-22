@@ -2,13 +2,11 @@ import numpy as np
 import pandas as pd
 import mykmeanssp as k  # still works with the warning - as long as we launched build_ext and the .so file is present
 import sys
-import math
 
-# TODO:
-# [ ] fix memory management issues
-# [ ] add proper exception handling from C module
-# [ ] Fix warning in setup command
-
+# [X] add proper exception handling from C module
+# [X] Fix warning in setup command
+# [X] check with chat - fix memory management issues
+# [X] Write a docstring for fit()
 default_iter = 300
 
 # ------------------ Functions ------------------
@@ -18,15 +16,30 @@ def terminate(msg):
 
 def parse_args(argv):
     if len(argv) == 5:  # script + 4 args: K eps file1 file2
-        K = int(argv[1])
+        try:
+            K = int(argv[1])
+        except:
+            terminate("Incorrect number of clusters!")
         it = default_iter
-        eps = float(argv[2])
+        try:
+            eps = float(argv[2])
+        except:
+            terminate("Incorrect epsilon!")
         file1 = argv[3]
         file2 = argv[4]
     elif len(argv) == 6:  # script + 5 args: K iter eps file1 file2
-        K = int(argv[1])
-        it = int(argv[2])
-        eps = float(argv[3])
+        try:
+            K = int(argv[1])
+        except:
+            terminate("Incorrect number of clusters!")
+        try:
+            it = int(argv[2])
+        except:
+            terminate("Incorrect maximum iteration!")
+        try:
+            eps = float(argv[3])
+        except:
+            terminate("Incorrect epsilon!")
         file1 = argv[4]
         file2 = argv[5]
     else:
@@ -40,9 +53,11 @@ def min_dist(point,points,centroids_idx):
     return min_dist #the minimal distance between a given point to some centorid in centroids.
 
 def join_and_sort(file1, file2):
-    df1 = pd.read_csv(file1, header=None)
-    df2 = pd.read_csv(file2, header=None)
-
+    try:
+        df1 = pd.read_csv(file1, header=None)
+        df2 = pd.read_csv(file2, header=None)
+    except Exception as e:
+        terminate("An Error Has Occurred")  # safe fallback if args count is wrong
     merged = pd.merge(df1, df2, on=0, how="inner")   # inner join on column 0 (the key)
     merged = merged.sort_values(by=0)
 
@@ -83,10 +98,10 @@ d = points.shape[1]
 if not (1 < K < N):
     terminate("Incorrect number of clusters!")
 
-if not (1 < iter < 800):
+if not type(iter)==int or not  1 < iter < 800:
     terminate("Incorrect maximum iteration!")
 
-if eps < 0:
+if not type(eps)==float or eps < 0:
     terminate("Incorrect epsilon!")
 
 
@@ -100,13 +115,9 @@ points_list = points.tolist()   # list[list[float]]
 init_centroids_list = init_centroids.tolist()   # list[float]
 
 centroids = k.fit(points_list, init_centroids_list, N, d, K, iter, eps)
-print(centroids)
+centroids_str = [[str(centroids[i][j]) for j in range(d)] for i in range(K)]
+for i in range(K):
+    # print(','.join(centroids_str[i]))
+    print(",".join(f"{x:.4f}" for x in centroids[i]))
 
-
-
-#print(join_and_sort(file1,file2))
-
-#print(f"fit() returned {k.fit(5,6)}")   # currently adds the two integers in C
-
-# Try running this regularly. 
-# If "mykmeanssp module doesn't exist" - run "python3 setup.py build_ext --inplace" in the folder and try again.
+# If changes were made in the C files - run "python3 setup.py build_ext --inplace" in the folder and then run Python.

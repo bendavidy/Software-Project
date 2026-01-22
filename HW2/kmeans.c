@@ -6,15 +6,15 @@
 #include <stdlib.h>
 
 /* --------------- Global and extern variables declerations --------------- */
-int N, K, iter, d;
-double eps;
-struct vector* head_vec;
-struct vector** init_centroids;
+// int N, K, iter, d;
+// double eps;
+// struct vector* head_vec;
+// struct vector** init_centroids;
 
-// extern int N, K, iter, d;
-// extern double eps;
-// extern struct vector* head_vec;
-// extern struct vector** init_centroids;
+extern int N, K, iter, d;
+extern double eps;
+extern struct vector* head_vec;
+extern struct vector** init_centroids;
 struct vector** assignments; /* assignments[j] points to the first vector in the centroids[j] cluster, connected with next_in_cluster */
 struct vector** centroids; /* centroids will point to the first elem of [vector*,vector*,..,vector*] after we will allocate space later.. */
 
@@ -26,12 +26,10 @@ void free_nodes(struct node* head);
 double update_centroids(void); /* updates centroids and returns the max delta in this update iteration */
 void update_assignments(void);
 struct node* deep_clone_nodes(struct node* node); /* this function will take */
-void print_vector_nodes(struct node* p); /* given a pointer to head of linked list it will print the vector: f1,f2,...,fd */
 
 void* check_alloc(void* p)
 {
     if (p == NULL) {
-        // TODO: make sure we throw the correct exception instead of exiting here
         printf("An Error Has Occurred\n");
         exit(1);
     }
@@ -194,118 +192,16 @@ struct node* deep_clone_nodes(struct node* src_node) /* recieve a pointer to som
     return head;
 }
 
-void print_vector_nodes(struct node* p) /* given a pointer to head of linked list it will print the vector: f1,f2,...,fd */
-{
-    int first;
-    first = 1;
-
-    while (p != NULL) {
-        if (!first) {
-            printf(",");
-        }
-        printf("%.4f", p->value);
-        first = 0;
-        p = p->next;
-    }
-}
-
 /* --------------- Main --------------- */
-struct vector** main()
+struct vector** kmeans()
 {
-    // TODO: delete these
-    N = 3;
-    K = 2;
-    iter = 400;
-    d = 1;
-    eps = 0.001f;
-
-    head_vec = check_alloc(malloc(K * sizeof(struct node*)));
-    init_centroids;
-
-    // printf("%s%d%s%d%s%d%s%d%s%f\n", "N=", N, ", K=", K, ", iter=", iter, ", d=", d, ", eps=", eps);
-    struct vector *curr_vec, *next_vec; /*, *printed_vec;*/
+    struct vector* curr_vec;
     centroids = init_centroids;
-    // struct node *head_node, *curr_node, *final_node; /* next_node; */
-    /* struct vector **centroids; centroids will point to the first elem of [vector*,vector*,..,vector*] after we will allocate space later.. */
-    // double n;
-    // char c;
     struct node* head_node;
     struct vector* temp_vec;
-    int k;
     int it;
-    // char* end;
-
-    // TODO: pass these validation to module wrapper function
-    // if (argc != 3) {
-    //     if (argc == 2) {
-    //         iter = 400;
-    //     } else {
-    //         printf("%s", "An Error Has Occurred\n");
-    //         exit(1);
-    //     }
-    // } else {
-    //     iter = strtol(argv[2], &end, 10);
-    //     if ((end == argv[2]) || (*end != '\0') || (iter <= 1) || (iter >= 800)) {
-    //         printf("%s", "Incorrect maximum iteration!\n");
-    //         exit(1);
-    //     }
-    // }
-
-    // head_node = check_alloc(malloc(sizeof(struct node)));
-    // curr_node = head_node;
-    // curr_node->next = NULL;
-
-    // head_vec = check_alloc(malloc(sizeof(struct vector)));
-    // curr_vec = head_vec;
-    // curr_vec->next = NULL;
-
-    // while (scanf("%lf%c", &n, &c) == 2) {
-    //     N++;
-    //     if (c == '\n') {
-    //         curr_node->value = n;
-    //         curr_vec->nodes = head_node;
-    //         curr_vec->next = check_alloc(malloc(sizeof(struct vector)));
-    //         curr_vec = curr_vec->next;
-
-    //         curr_vec->next = NULL;
-    //         curr_vec->next_in_cluster = NULL;
-    //         curr_vec->nodes = NULL; /*New line-Shalev*/
-
-    //         head_node = check_alloc(malloc(sizeof(struct node)));
-    //         curr_node = head_node;
-    //         curr_node->next = NULL;
-    //         if (d == 0) {
-    //             d = N;
-    //         }
-    //         continue;
-    //     }
-
-    //     curr_node->value = n;
-    //     curr_node->next = check_alloc(malloc(sizeof(struct node)));
-    //     curr_node = curr_node->next;
-    //     curr_node->next = NULL;
-    // }
-    // final_node = head_node;
-
-    // N = (int)(N / d);
-    // K = strtol(argv[1], &end, 10);
-    // if ((end == argv[1]) || (*end != '\0') || (K <= 1) || (K >= N)) {
-    //     printf("%s", "Incorrect number of clusters!\n");
-    //     exit(1);
-    // }
 
     assignments = check_alloc(malloc(K * sizeof(struct vector*))); /* assignments[j] points to the element that starts the cluster */
-
-    // centroids = check_alloc(malloc(K * sizeof(struct vector*))); /* allocate K spaces, now centroids is pointing to the first elem of [vector*,vector*,..,vector*] */
-    // next_vec = head_vec;
-    // for (k = 0; k < K; k++) {
-    //     /* do we need to make sure K < number of data points ? I assume it is true */
-    //     centroids[k] = check_alloc(malloc(sizeof(struct vector))); /* each elem in [vector*,vector*,..,vector*] will have valid adress (we can store in each adress vector) */
-    //     centroids[k]->next = NULL; /* each vector will be independent from the other in centroids */
-    //     centroids[k]->nodes = deep_clone_nodes(next_vec->nodes); /* creating deep copy for each linked list */
-    //     centroids[k]->next_in_cluster = NULL; /* each vector will be independent from the other in centroids */
-    //     next_vec = next_vec->next;
-    // }
 
     /* --------------- Main loop --------------- */
     for (it = 0; it < iter; it++) {
@@ -316,28 +212,7 @@ struct vector** main()
             break;
     }
 
-    /* print output onscreen */
-    printf("Output from kmeans.c file:\n");
-    for (k = 0; k < K; k++) {
-        print_vector_nodes(centroids[k]->nodes);
-        printf("\n");
-    }
-
     /* --------------- free memory --------------- */
-    // for (int k = 0; k < K; k++) {
-    //     free_nodes(centroids[k]->nodes); /* free the linked list of the k'th vector */
-    //     free(centroids[k]); /* free the k'th vector */
-    // }
-    // free(centroids);
-
-    // for (int k = 0; k < K; k++) {
-    //     free_nodes(assignments[k]->nodes); /* free the linked list of the k'th vector */
-    //     free_nodes(assignments[k]->next_in_cluster); /* free the linked list of the k'th vector */
-    //     free(assignments[k]); /* free the k'th vector */
-    // }
-    for (int k = 0; k < K; k++) {
-        free(assignments[k]); /* free the k'th vector */
-    }
     free(assignments); /* free the array of pointers */
 
     curr_vec = head_vec;
@@ -348,8 +223,6 @@ struct vector** main()
         curr_vec = curr_vec->next;
         free(temp_vec);
     }
-    // free(final_node);
-    printf("Finished kmeans.c\n");
 
     return centroids;
 }
