@@ -7,6 +7,7 @@ import math
 # TODO:
 # [ ] fix memory management issues
 # [ ] add proper exception handling from C module
+# [ ] Fix warning in setup command
 
 default_iter = 300
 
