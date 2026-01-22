@@ -1,7 +1,6 @@
 #define PY_SSIZE_T_CLEAN
-#include <Python.h> // still works with the warning
-
 #include "kmeans.h"
+#include <Python.h> // still works with the warning
 
 // --------------- Global variables ---------------
 int N, K, iter, d;
@@ -10,47 +9,15 @@ struct vector* head_vec; /* indicates the head vector of the input data */
 struct vector** init_centroids;
 
 // --------------- C Function ---------------
-double geo_c(double z, int n)
-{
-    double geo_sum = 0;
-    int i;
-    for (i = 0; i < n; i++) {
-        /* pow(x,y) function raises x to the power of y - it is from <math.h> */
-        geo_sum += pow(z, i);
-    }
-    return geo_sum;
-}
-
-// TODO: change input
-int fit_c(int a, int b) { return 0; }
 
 // --------------- Function Wrappers ---------------
-// We would like to interface the geo_c function so one can call it from Python.
-static PyObject* geo_sum(PyObject* self, PyObject* args)
-{
-    double z;
-    int n;
-    /* This parses the Python arguments into a double (d)  variable named z and
-     * int (i) variable named n*/
-    if (!PyArg_ParseTuple(args, "di", &z, &n)) {
-        return NULL; /* In the CPython API, a NULL value is never valid for a
-                        PyObject* so it is used to signal that an error has
-                        occurred. */
-    }
-
-    /* This builds the answer ("d" = Convert a C double to a Python floating point
-     * number) back into a python object */
-    return Py_BuildValue(
-        "d", geo_c(z, n)); /*  Py_BuildValue(...) returns a PyObject*  */
-}
 
 static PyObject* fit(PyObject* self, PyObject* args)
-// TODO: add exception handler
 {
     PyObject *points, *elem, *init_centroids_py, *final_centroids, *curr_cent_py;
     double node_value;
     struct vector** centroids; /* centroids will point to the first elem of [vector*,vector*,..,vector*] after we will allocate space later.. */
-    struct vector *curr_vec, *next_vec;
+    struct vector* curr_vec;
     struct node *head_node, *curr_node, *final_node;
 
     // init_centroids = [ [vector], [vector], .... ]
@@ -102,8 +69,6 @@ static PyObject* fit(PyObject* self, PyObject* args)
 
     // Converting init_centroids to C format
     init_centroids = check_alloc(malloc(K * sizeof(struct vector*))); /* allocate K spaces, now centroids is pointing to the first elem of [vector*,vector*,..,vector*] */
-    // next_vec = head_vec;
-
     for (int k = 0; k < K; k++) {
         curr_cent_py = PyList_GetItem(init_centroids_py, k);
         init_centroids[k] = check_alloc(malloc(sizeof(struct vector))); /* each elem in [vector*,vector*,..,vector*] will have valid adress (we can store in each adress vector) */
@@ -126,50 +91,26 @@ static PyObject* fit(PyObject* self, PyObject* args)
         curr_node->next = NULL;
     }
 
-    // Test prints
-    printf("VECTORS:\n");
-    curr_vec = head_vec;
-    curr_node = curr_vec->nodes;
-    for (int k = 0; k < 10; k++) {
-        printf("vector %d: ", k);
-        int first = 1;
-        while (curr_node != NULL) {
-            if (!first) {
-                printf(",");
-            }
-            printf("%.4f", curr_node->value);
-            first = 0;
+    // Processing output
+    centroids = kmeans(); // array[vector, vector, ...]
+    final_centroids = PyList_New(K);
+    for (int i = 0; i < K; i++) {
+        curr_vec = centroids[i];
+        curr_node = curr_vec->nodes;
+        PyList_SetItem(final_centroids, i, PyList_New(d));
+        for (int j = 0; j < d; j++) {
+            PyList_SetItem(PyList_GetItem(final_centroids, i), j, Py_BuildValue("f", curr_node->value));
             curr_node = curr_node->next;
         }
-        printf("\n");
-        curr_vec = curr_vec->next;
-        curr_node = curr_vec->nodes;
     }
-
-    // Processing output
-    centroids = kmeans();
-    printf("After kmeans return");
-    final_centroids = Py_BuildValue("O", centroids); /*  Py_BuildValue(...) returns a PyObject*  */
 
     // Freeing memory
     free(final_node);
     for (int k = 0; k < K; k++) {
         free_nodes(centroids[k]->nodes); /* free the linked list of the k'th vector */
-        free_nodes(init_centroids[k]->nodes); /* free the linked list of the k'th vector */
         free(centroids[k]); /* free the k'th vector */
-        free(init_centroids[k]); /* free the k'th vector */
     }
     free(centroids);
-    free(init_centroids);
-
-    // curr_vec = head_vec;
-    // while (curr_vec != NULL) {
-    //     head_node = curr_vec->nodes;
-    //     free_nodes(head_node);
-    //     temp_vec = curr_vec;
-    //     curr_vec = curr_vec->next;
-    //     free(temp_vec);
-    // }
 
     return final_centroids;
 }
@@ -177,19 +118,11 @@ static PyObject* fit(PyObject* self, PyObject* args)
 // Telling python interpreter what methods we have in the module.
 // This is a method list, each method represented by a structure with 4 members representing a single method in your module.
 static PyMethodDef geoMethods[] = {
-    { "geo_sum", /* the Python method name that will be used */
-        (PyCFunction)geo_sum, /* the C-function that implements the Python function
-                                 and returns static PyObject*  */
+    { "fit", /* the Python method name that will be used */
+        (PyCFunction)fit, /* the C-function that implements the Python function and returns static PyObject*  */
         METH_VARARGS, /* flags indicating parameters accepted for this function */
-        PyDoc_STR(
-            "A geometric series up to n. sum_up_to_n(z^n)") }, /*  The docstring for
-                                                                  the function */
-    { "fit",
-        (PyCFunction)fit,
-        METH_VARARGS,
-        // TODO: change this
-        PyDoc_STR("Returns a sum of two integers") },
-
+        PyDoc_STR("Expecting: data_points : list[list[float]], init_centroids_list : list[list[float]], N : int, d : int, K : int, iter : int, eps : float") },
+    /*  The docstring for the function */
     { NULL, NULL, 0, NULL } /* The last entry must be all NULL as shown to act as a
                   sentinel. Python looks for this entry to know that all
                   of the functions for the module have been defined. */
