@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 import mykmeanssp as k  # still works with the warning - as long as we launched build_ext and the .so file is present
 import sys
-import math
 
 # [X] add proper exception handling from C module
 # [X] Fix warning in setup command
