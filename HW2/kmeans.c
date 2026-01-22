@@ -212,6 +212,8 @@ void print_vector_nodes(struct node* p) /* given a pointer to head of linked lis
 /* --------------- Main --------------- */
 struct vector** main()
 {
+    struct vector *curr_vec, *next_vec;
+    struct node* curr_node;
     // TODO: delete these
     N = 3;
     K = 2;
@@ -219,21 +221,51 @@ struct vector** main()
     d = 1;
     eps = 0.001f;
 
-    head_vec = check_alloc(malloc(K * sizeof(struct node*)));
-    init_centroids;
+    // Test head_vec init
+    curr_vec = head_vec;
+    for (int i = 0; i < N - 1; i++) {
+        curr_vec = check_alloc(malloc(sizeof(struct vector)));
+        curr_vec->nodes = check_alloc(malloc(sizeof(struct node)));
+        curr_vec->next_in_cluster = NULL;
+        curr_node = curr_vec->nodes;
+        for (int j = 0; j < d - 1; j++) {
+            curr_node->value = (10 * N + j);
+            curr_node->next = check_alloc(malloc(sizeof(struct node)));
+            curr_node = curr_node->next;
+        }
+        curr_node->value = (10 * N + d);
+        curr_node->next = NULL;
+        curr_vec->next = check_alloc(malloc(sizeof(struct vector)));
+        curr_vec = curr_vec->next;
+    }
+    curr_vec->next = NULL;
+
+    // Test init_centroids init
+    init_centroids = check_alloc(malloc(K * sizeof(struct vector*)));
+    for (int i = 0; i < K; i++) {
+        curr_vec = init_centroids[0];
+        curr_vec = check_alloc(malloc(sizeof(struct vector)));
+        curr_vec->nodes = check_alloc(malloc(sizeof(struct node)));
+        curr_vec->next_in_cluster = NULL;
+        curr_node = curr_vec->nodes;
+        for (int j = 0; j < d - 1; j++) {
+            curr_node->value = (100 * N + j);
+            curr_node->next = check_alloc(malloc(sizeof(struct node)));
+            curr_node = curr_node->next;
+        }
+        curr_node->value = (100 * N + d);
+        curr_node->next = NULL;
+        curr_vec->next = check_alloc(malloc(sizeof(struct vector)));
+    }
 
     // printf("%s%d%s%d%s%d%s%d%s%f\n", "N=", N, ", K=", K, ", iter=", iter, ", d=", d, ", eps=", eps);
-    struct vector *curr_vec, *next_vec; /*, *printed_vec;*/
     centroids = init_centroids;
-    // struct node *head_node, *curr_node, *final_node; /* next_node; */
-    /* struct vector **centroids; centroids will point to the first elem of [vector*,vector*,..,vector*] after we will allocate space later.. */
-    // double n;
-    // char c;
+    // struct vector *curr_vec, *next_vec;
+
     struct node* head_node;
     struct vector* temp_vec;
     int k;
     int it;
-    // char* end;
 
     // TODO: pass these validation to module wrapper function
     // if (argc != 3) {
@@ -324,17 +356,16 @@ struct vector** main()
     }
 
     /* --------------- free memory --------------- */
-    // for (int k = 0; k < K; k++) {
-    //     free_nodes(centroids[k]->nodes); /* free the linked list of the k'th vector */
-    //     free(centroids[k]); /* free the k'th vector */
-    // }
-    // free(centroids);
+    for (int k = 0; k < K; k++) {
+        free_nodes(centroids[k]->nodes); /* free the linked list of the k'th vector */
+        free(centroids[k]); /* free the k'th vector */
+    }
+    free(centroids);
 
-    // for (int k = 0; k < K; k++) {
-    //     free_nodes(assignments[k]->nodes); /* free the linked list of the k'th vector */
-    //     free_nodes(assignments[k]->next_in_cluster); /* free the linked list of the k'th vector */
-    //     free(assignments[k]); /* free the k'th vector */
-    // }
+    for (int k = 0; k < K; k++) {
+        free_nodes(assignments[k]->nodes); /* free the linked list of the k'th vector */
+        free(assignments[k]); /* free the k'th vector */
+    }
     for (int k = 0; k < K; k++) {
         free(assignments[k]); /* free the k'th vector */
     }
@@ -342,6 +373,14 @@ struct vector** main()
 
     curr_vec = head_vec;
     while (curr_vec != NULL) {
+        head_node = curr_vec->nodes;
+        free_nodes(head_node);
+        temp_vec = curr_vec;
+        curr_vec = curr_vec->next;
+        free(temp_vec);
+    }
+    for (int i = 0; i < K; i++) {
+        curr_vec = init_centroids[i];
         head_node = curr_vec->nodes;
         free_nodes(head_node);
         temp_vec = curr_vec;
