@@ -1,0 +1,33 @@
+C implementation:
+    [ ] sym() - similarity matrix 1.1
+    [ ] ddg() - diagonal degree matrix 1.2
+    [ ] norm() - normalized similarity matrix 1.3
+    [ ] symnmf() - finding H 1.4
+    
+    [ ] frob() - calculating Frobenius norm
+    [ ] main() - parse CMD arguments and print result based on goal
+
+Python implementation:
+    [ ] initializing H
+    [ ] print matrix function
+
+C Python API:
+    [ ]Y write symnmfmodule.c
+        - sym
+        - ddg
+        - norm
+        - symnmf
+    [X]Y header file
+    [ ]Y setup.py
+
+[ ] analysis.py
+
+
+Python function flow:
+    py_sym(data) -> C_sym(data) -> calculates & returns A
+    py_ddg(data) -> C_ddg(data) -> calls C_sym(data) -> calculates & returns D
+    py_norm(data) -> C_norm(data) -> calls C_ddg(data) -> calculates & returns W
+    py_symnmf(H_0, W, N, d, K) -> C_symnmf(H_0, W, N, d, K) -> calculates & returns H
+
+*** N, d - are inferred in C_sym()
+*** K is inferred in Python (args) and passed along to py_symnmf()
