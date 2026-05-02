@@ -1,7 +1,6 @@
 #define PY_SSIZE_T_CLEAN
-#include <Python.h> // still works with the warning
-#include "kmeans.h"
 #include "symnmf.h"
+#include <Python.h> // still works with the warning
 
 // --------------- Global variables ---------------
 int N, K, d, iter = 300;
@@ -58,11 +57,26 @@ struct vector* convert_py_points_to_vectors(PyObject* points, int first_dim, int
     return head_vec;
 }
 
-PyObject execute_C_func_from_data_points(PyObject* args, double** (*f)(struct vector*)) {
-    PyObject *data_points, *py_out_matrix;
+// Given Python points and their dimensions, converts them to C double** and returns the pointer.
+double** convert_py_points_to_matrix(PyObject* points, int first_dim, int second_dim) {
+    double** C_mat = check_alloc(first_dim * malloc(sizeof(double*)));
+
+    for (int i = 0; i < first_dim; i++) {
+        C_mat[i] = check_alloc(malloc(second_dim * sizeof(double)));
+        for (int j = 0; j < second_dim; j++) {
+            C_mat[i][j] = PyFloat_AsDouble(Pylist_GetItem(PyList_GetItem(points, i), j));
+        }
+    }
+
+    return C_mat;
+}
+
+PyObject execute_C_func_from_data_points(PyObject* args, double** (*f)(struct vector*), int out_dim) {
+    PyObject *data_points, *py_out;
     struct vector *curr_vec, *temp_vec;
     struct node* final_node;
-    double** C_out_matrix;
+    double **C_out_mat, **C_in_mat;
+    double* C_out_arr;
 
     if (!PyArg_ParseTuple(args, "O", &data_points)) {
         // Recieving the data points as a 2D Python array
@@ -74,41 +88,59 @@ PyObject execute_C_func_from_data_points(PyObject* args, double** (*f)(struct ve
     d = PyList_Size(PyList_GetItem(data_points, 0));
 
     // Convert the python data to our vectors & nodes format
-    head_vec = convert_py_points_to_vectors(data_points, N, d);
+    // head_vec = convert_py_points_to_vectors(data_points, N, d);
+    C_in_mat = convert_py_points_to_matrix(data_points, N, d);
 
     // TODO: make sure this doesnt break anything (freeing in the function instead of now)
     // final_node = head_node; // for memory clearing
 
-    // C Function call
-    C_out_matrix = f(head_vec);
+    if (out_dim == 2) {
+        // C Function call
+        C_out_mat = f(C_in_mat);
 
-    // Converting our C_out_matrix to a Python matrix
-    py_out_matrix = PyList_New(K);
-    for (int i = 0; i < N; i++) {
-        PyList_SetItem(py_out_matrix, i, PyList_New(N));
-        for (int j = 0; j < N; j++) {
-            PyList_SetItem(PyList_GetItem(C_out_matrix, i), j, Py_BuildValue("f", C_out_matrix[i][j]));
+        // Converting our C_out_mat to a Python matrix
+        py_out = PyList_New(N);
+        for (int i = 0; i < N; i++) {
+            PyList_SetItem(py_out, i, PyList_New(N));
+            for (int j = 0; j < N; j++) {
+                PyList_SetItem(PyList_GetItem(C_out_mat, i), j, Py_BuildValue("f", C_out_mat[i][j]));
+            }
         }
+
+        // Freeing C_out_mat's memory
+        for (int i = 0; i < N; i++) {
+            free(C_out_mat[i]);
+        }
+        free(C_out_mat);
+
+        // Freeing data memory
+        // curr_vec = head_vec;
+        // while (curr_vec != NULL) {
+        //     head_node = curr_vec->nodes;
+        //     free_nodes(head_node);
+        //     temp_vec = curr_vec;
+        //     curr_vec = curr_vec->next;
+        //     free(temp_vec);
+        // }
+        // free(final_node);
+
     }
 
-    // Freeing C_out_matrix's memory
-    for (int i = 0; i < N; i++){
-        free(C_out_matrix[i]);
-    }
-    free(C_out_matrix);
+    else if (out_dim == 1) {
+        // C Function call
+        C_out_arr = f(C_in_mat);
 
-    // Freeing data memory
-    curr_vec = head_vec;
-    while (curr_vec != NULL) {
-        head_node = curr_vec->nodes;
-        free_nodes(head_node);
-        temp_vec = curr_vec;
-        curr_vec = curr_vec->next;
-        free(temp_vec);
-    }
-    free(final_node);
+        // Converting our C_out_mat to a Python matrix
+        py_out = PyList_New(N);
+        for (int i = 0; i < N; i++) {
+            PyList_SetItem(py_out, i, C_out_arr[i]);
+        }
 
-    return py_out_matrix;
+        // Freeing C_out_mat's memory
+        free(C_out_arr);
+    }
+
+    return py_out;
 }
 
 #pragma endregion
@@ -116,21 +148,21 @@ PyObject execute_C_func_from_data_points(PyObject* args, double** (*f)(struct ve
 #pragma region Function Wrappers
 
 static PyObject* sym_w(PyObject* self, PyObject* args) {
-    return execute_C_func_from_data_points(args, sym);
+    return execute_C_func_from_data_points(args, sym, 2);
 }
 
 static PyObject* ddg_w(PyObject* self, PyObject* args) {
-    return execute_C_func_from_data_points(args, ddg);
+    return execute_C_func_from_data_points(args, ddg, 1);
 }
 
 static PyObject* norm_w(PyObject* self, PyObject* args) {
-    return execute_C_func_from_data_points(args, norm);
+    return execute_C_func_from_data_points(args, norm, 2);
 }
 
 static PyObject* symnmf_w(PyObject* self, PyObject* args) {
-    PyObject *pyH_0, *pyW;
+    PyObject *pyH_0, *pyW, *py_out_matrix;
     struct node* final_node;
-    struct vector *H_head_vec, *W_head_vec;
+    double **H_in_mat, **W_in_mat, **H_out;
 
     if (!PyArg_ParseTuple(args, "OOiii", &pyH_0, &pyW, &N, &d, &K)) {
         // Recieving the data points as a 2D Python array
@@ -138,13 +170,42 @@ static PyObject* symnmf_w(PyObject* self, PyObject* args) {
     }
 
     // Convert the python data to our vectors & nodes format
-    H_head_vec = convert_py_points_to_vectors(pyH_0, N, K);
-    W_head_vec = convert_py_points_to_vectors(pyW, N, K);
+    H_in_mat = convert_py_points_to_matrix(pyH_0, N, K);
+    W_in_mat = convert_py_points_to_matrix(pyW, N, N);
 
     // TODO: make sure this doesnt break anything (freeing in the function instead of now)
     // final_node = head_node; // for memory clearing
 
-    // TODO: continue here
+    // C Function call
+    H_out = symnmf(H_in_mat, W_in_mat);
+
+    // Converting our H_out to a Python matrix
+    py_out_matrix = PyList_New(N);
+    for (int i = 0; i < N; i++) {
+        PyList_SetItem(py_out_matrix, i, PyList_New(K));
+        for (int j = 0; j < K; j++) {
+            PyList_SetItem(PyList_GetItem(H_out, i), j, Py_BuildValue("f", H_out[i][j]));
+        }
+    }
+
+    // Freeing H_out's memory
+    for (int i = 0; i < N; i++) {
+        free(H_out[i]);
+    }
+    free(H_out);
+
+    // Freeing data memory
+    // curr_vec = head_vec;
+    // while (curr_vec != NULL) {
+    //     head_node = curr_vec->nodes;
+    //     free_nodes(head_node);
+    //     temp_vec = curr_vec;
+    //     curr_vec = curr_vec->next;
+    //     free(temp_vec);
+    // }
+    // free(final_node);
+
+    return py_out_matrix;
 }
 
 #pragma endregion
@@ -156,21 +217,22 @@ static PyMethodDef symnmfMethods[] = {
         (PyCFunction)sym_w, /* the C-function that implements the Python function and returns static PyObject*  */
         METH_VARARGS, /* flags indicating parameters accepted for this function */
         PyDoc_STR(  /*  The docstring for the function */
-            """Calculating the Similarity Matrix based on the N data points starting in the head node.
+            """Calculating the Similarity Matrix based on the N data points.
             Expecting:
             data_points : list[list[float]]""") },
     { "ddg", /* the Python method name that will be used */
         (PyCFunction)ddg_w, /* the C-function that implements the Python function and returns static PyObject*  */
         METH_VARARGS, /* flags indicating parameters accepted for this function */
         PyDoc_STR(  /*  The docstring for the function */
-            """Calculating the Diagonal Degree Matrix based on the N data points starting in the head node.
+            """Calculating the Diagonal Degree Matrix based on the N data points.
+            The resulting ddg is an array representing the diagonal itself.
             Expecting:
             data_points : list[list[float]]""") },
     { "norm", /* the Python method name that will be used */
         (PyCFunction)norm_w, /* the C-function that implements the Python function and returns static PyObject*  */
         METH_VARARGS, /* flags indicating parameters accepted for this function */
         PyDoc_STR(  /*  The docstring for the function */
-            """Calculating the Normalized Similarity Matrix based on the N data points starting in the head node.
+            """Calculating the Normalized Similarity Matrix based on the N data points.
             Expecting:
             data_points : list[list[float]]""") },
     { "symnmf", /* the Python method name that will be used */
@@ -179,7 +241,7 @@ static PyMethodDef symnmfMethods[] = {
         PyDoc_STR(  /*  The docstring for the function */
             """Calculating the Decomposition Matrix H that associates each data point to a cluster.
             Expecting:
-            H_0 : list[list[float]], W : list[list[float]], N : int, d : int, K : int""") }, // TODO: complete this
+            H_0 : list[list[float]], W : list[list[float]], N : int, d : int, K : int""") },
     { NULL, NULL, 0, NULL } /* The last entry must be all NULL as shown to act as a
                   sentinel. Python looks for this entry to know that all
                   of the functions for the module have been defined. */
