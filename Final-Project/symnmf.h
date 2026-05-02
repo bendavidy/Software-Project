@@ -23,18 +23,19 @@ void free_nodes(struct node* head);
 // Deep cloning all the nodes reachable from head, including itself
 struct node* deep_clone_nodes(struct node* node);
 
+// TODO: fix these documentations
 // Calculating the Similarity Matrix based on the N data points starting in the head node.
 // Defined in 1.1
-double** sym(struct vector* head_vec);
+double** sym(double** C_in);
 
 // Calculating the Diagonal Degree Matrix based on sym.
 // the DDG is a 1-dim array of doubles (of length N) representing the diagonal itself.
 // Defined in 1.2
-double* ddg(struct vector* head_vec);
+double* ddg(double** C_in);
 
 // Calculating the Normalized Similarity Matrix based on sym and ddg.
 // Defined in 1.3
-double** norm(struct vector* head_vec);
+double** norm(double** C_in);
 
 // Calculating the Decomposition Matrix H that associates each data point to a cluster. 
 // Called ONLY from Python, after calculating H_0 and W.

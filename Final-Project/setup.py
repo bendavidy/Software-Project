@@ -1,7 +1,7 @@
 from setuptools import Extension, setup
 
-module = Extension("mykmeanssp", sources=['kmeansmodule.c', 'kmeans.c'])
-setup(name='mykmeanssp',
+module = Extension("symnmf", sources=['symnmfmodule.c', 'symnmf.c'])
+setup(name='symnmf',
      version='1.0',
      description='Python wrapper for custom C extension',
      ext_modules=[module])
