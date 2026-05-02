@@ -6,31 +6,18 @@
 // --------------- Global variables ---------------
 int N, K, d, iter = 300;
 double eps = 1e-4;
-struct vector* head_vec; /* indicates the head vector of the input data */
-struct vector** init_centroids;
+struct vector* head_vec;
+struct node* head_node;
 
-// --------------- C Function ---------------
+#pragma region C Functions
 
-#pragma region Function Wrappers
-
-static PyObject* sym_w(PyObject* self, PyObject* args)
-{
-    PyObject *data_points, *elem, *py_A;
+// Given Python points and their dimensions, converts them to C vectors and returns head_vec and final_node for cleanup.
+struct vector* convert_py_points_to_vectors(PyObject* points, int first_dim, int second_dim) {
+    struct node* curr_node;
+    struct vector* curr_vec;
     double node_value;
-    struct vector *curr_vec, *temp_vec;
-    struct node *head_node, *curr_node, *final_node;
-    double** A;
+    PyObject* elem;
 
-    /* This parses the Python arguments into a double (d)  variable named z and
-     * int (i) variable named n*/
-    // TODO: this functino should only recieve the data_points and infer N, d from that! K isn't relevant yet!
-    if (!PyArg_ParseTuple(args, "Oiii", &data_points, &N, &d, &K)) {
-        return NULL; /* In the CPython API, a NULL value is never valid for a
-                        PyObject* so it is used to signal that an error has
-                        occurred. */
-    }
-
-    // Convert the python data to our vectors & nodes format
     head_node = check_alloc(malloc(sizeof(struct node)));
     curr_node = head_node;
     curr_node->next = NULL;
@@ -39,10 +26,10 @@ static PyObject* sym_w(PyObject* self, PyObject* args)
     curr_vec = head_vec;
     curr_vec->next = NULL;
 
-    for (int i = 0; i < N; i++) {
-        elem = PyList_GetItem(data_points, i);
+    for (int i = 0; i < first_dim; i++) {
+        elem = PyList_GetItem(points, i);
         // printf("%s%d%s%d%s%f\n", "i = ", i, ", first value of elem ", i, " is ", PyFloat_AsDouble(PyList_GetItem(elem, 0)));
-        for (int j = 0; j < d - 1; j++) {
+        for (int j = 0; j < second_dim - 1; j++) {
             node_value = PyFloat_AsDouble(PyList_GetItem(elem, j));
             // printf("\t%s%d%s%f\n", "value in ", j, " place is ", node_value);
             curr_node->value = node_value;
@@ -50,7 +37,7 @@ static PyObject* sym_w(PyObject* self, PyObject* args)
             curr_node = curr_node->next;
             curr_node->next = NULL;
         }
-        node_value = PyFloat_AsDouble(PyList_GetItem(elem, d - 1));
+        node_value = PyFloat_AsDouble(PyList_GetItem(elem, second_dim - 1));
         curr_node->value = node_value;
         curr_vec->nodes = head_node;
         curr_vec->next = check_alloc(malloc(sizeof(struct vector)));
@@ -65,25 +52,50 @@ static PyObject* sym_w(PyObject* self, PyObject* args)
         curr_node->next = NULL;
         continue;
     }
-    final_node = head_node; // for memory clearing
+
+    free(head_node); // TODO: make sure this doesnt break anything (instead of freeing final_node later)
+
+    return head_vec;
+}
+
+PyObject execute_C_func_from_data_points(PyObject* args, double** (*f)(struct vector*)) {
+    PyObject *data_points, *py_out_matrix;
+    struct vector *curr_vec, *temp_vec;
+    struct node* final_node;
+    double** C_out_matrix;
+
+    if (!PyArg_ParseTuple(args, "O", &data_points)) {
+        // Recieving the data points as a 2D Python array
+        return NULL;
+    }
+
+    // Inferring N,d
+    N = PyList_Size(data_points);
+    d = PyList_Size(PyList_GetItem(data_points, 0));
+
+    // Convert the python data to our vectors & nodes format
+    head_vec = convert_py_points_to_vectors(data_points, N, d);
+
+    // TODO: make sure this doesnt break anything (freeing in the function instead of now)
+    // final_node = head_node; // for memory clearing
 
     // C Function call
-    A = sym(head_node);
-    
-    // Converting our A C-matrix to a Python matrix
-    py_A = PyList_New(K);
+    C_out_matrix = f(head_vec);
+
+    // Converting our C_out_matrix to a Python matrix
+    py_out_matrix = PyList_New(K);
     for (int i = 0; i < N; i++) {
-        PyList_SetItem(py_A, i, PyList_New(N));
+        PyList_SetItem(py_out_matrix, i, PyList_New(N));
         for (int j = 0; j < N; j++) {
-            PyList_SetItem(PyList_GetItem(A, i), j, Py_BuildValue("f", A[i][j]));
+            PyList_SetItem(PyList_GetItem(C_out_matrix, i), j, Py_BuildValue("f", C_out_matrix[i][j]));
         }
     }
 
-    // Freeing A's memory
+    // Freeing C_out_matrix's memory
     for (int i = 0; i < N; i++){
-        free(A[i])
+        free(C_out_matrix[i]);
     }
-    free(A)
+    free(C_out_matrix);
 
     // Freeing data memory
     curr_vec = head_vec;
@@ -96,89 +108,43 @@ static PyObject* sym_w(PyObject* self, PyObject* args)
     }
     free(final_node);
 
-    return py_A;
+    return py_out_matrix;
 }
 
-static PyObject* ddg_w(PyObject* self, PyObject* args)
-{
-    // TODO: finish this
-    PyObject *A, *elem, *py_D;
-    double** A;
+#pragma endregion
 
-    // TODO: this functino should only recieve the data_points and infer N, d from that! K isn't relevant yet!
-    if (!PyArg_ParseTuple(args, "O", &A)) {
-        return NULL; 
+#pragma region Function Wrappers
+
+static PyObject* sym_w(PyObject* self, PyObject* args) {
+    return execute_C_func_from_data_points(args, sym);
+}
+
+static PyObject* ddg_w(PyObject* self, PyObject* args) {
+    return execute_C_func_from_data_points(args, ddg);
+}
+
+static PyObject* norm_w(PyObject* self, PyObject* args) {
+    return execute_C_func_from_data_points(args, norm);
+}
+
+static PyObject* symnmf_w(PyObject* self, PyObject* args) {
+    PyObject *pyH_0, *pyW;
+    struct node* final_node;
+    struct vector *H_head_vec, *W_head_vec;
+
+    if (!PyArg_ParseTuple(args, "OOiii", &pyH_0, &pyW, &N, &d, &K)) {
+        // Recieving the data points as a 2D Python array
+        return NULL;
     }
 
     // Convert the python data to our vectors & nodes format
-    head_node = check_alloc(malloc(sizeof(struct node)));
-    curr_node = head_node;
-    curr_node->next = NULL;
+    H_head_vec = convert_py_points_to_vectors(pyH_0, N, K);
+    W_head_vec = convert_py_points_to_vectors(pyW, N, K);
 
-    head_vec = check_alloc(malloc(sizeof(struct vector)));
-    curr_vec = head_vec;
-    curr_vec->next = NULL;
+    // TODO: make sure this doesnt break anything (freeing in the function instead of now)
+    // final_node = head_node; // for memory clearing
 
-    for (int i = 0; i < N; i++) {
-        elem = PyList_GetItem(data_points, i);
-        // printf("%s%d%s%d%s%f\n", "i = ", i, ", first value of elem ", i, " is ", PyFloat_AsDouble(PyList_GetItem(elem, 0)));
-        for (int j = 0; j < d - 1; j++) {
-            node_value = PyFloat_AsDouble(PyList_GetItem(elem, j));
-            // printf("\t%s%d%s%f\n", "value in ", j, " place is ", node_value);
-            curr_node->value = node_value;
-            curr_node->next = check_alloc(malloc(sizeof(struct node)));
-            curr_node = curr_node->next;
-            curr_node->next = NULL;
-        }
-        node_value = PyFloat_AsDouble(PyList_GetItem(elem, d - 1));
-        curr_node->value = node_value;
-        curr_vec->nodes = head_node;
-        curr_vec->next = check_alloc(malloc(sizeof(struct vector)));
-        curr_vec = curr_vec->next;
-
-        curr_vec->next = NULL;
-        // curr_vec->next_in_cluster = NULL;
-        curr_vec->nodes = NULL; /*New line-Shalev*/
-
-        head_node = check_alloc(malloc(sizeof(struct node)));
-        curr_node = head_node;
-        curr_node->next = NULL;
-        continue;
-    }
-    final_node = head_node; // for memory clearing
-
-    // C Function call
-    A = sym(head_node);
-    
-    // Converting our A C-matrix to a Python matrix
-    py_D = PyList_New(K);
-    for (int i = 0; i < N; i++) {
-        PyList_SetItem(py_D, i, PyList_New(N));
-        for (int j = 0; j < N; j++) {
-            PyList_SetItem(PyList_GetItem(A, i), j, Py_BuildValue("f", A[i][j]));
-        }
-    }
-
-    // Freeing memory
-    curr_vec = head_vec;
-    while (curr_vec != NULL) {
-        head_node = curr_vec->nodes;
-        free_nodes(head_node);
-        temp_vec = curr_vec;
-        curr_vec = curr_vec->next;
-        free(temp_vec);
-    }
-    free(final_node);
-
-    return py_D;
-}
-
-static PyObject* norm_w(PyObject* self, PyObject* args){ 
-    // TODO: implement
-}
-
-static PyObject* symnmf_w(PyObject* self, PyObject* args){
-    // TODO: implement
+    // TODO: continue here
 }
 
 #pragma endregion
@@ -213,7 +179,7 @@ static PyMethodDef symnmfMethods[] = {
         PyDoc_STR(  /*  The docstring for the function */
             """Calculating the Decomposition Matrix H that associates each data point to a cluster.
             Expecting:
-            H_0 : ???, W : ???, N : int, d : int, K : int""") }, // TODO: complete this
+            H_0 : list[list[float]], W : list[list[float]], N : int, d : int, K : int""") }, // TODO: complete this
     { NULL, NULL, 0, NULL } /* The last entry must be all NULL as shown to act as a
                   sentinel. Python looks for this entry to know that all
                   of the functions for the module have been defined. */

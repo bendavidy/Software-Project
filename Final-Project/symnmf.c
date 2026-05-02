@@ -95,19 +95,19 @@ void print_vector_nodes(struct node* p)
     }
 }
 
-double** sym(struct node* head) {
+double** sym(struct vector* head_vec) {
     // TODO: implement
 }
 
-double* ddg(struct node* head){
+double* ddg(struct vector* head_vec) {
     // TODO: implement
 }
 
-double** norm(struct node* head){
+double** norm(struct vector* head_vec) {
     // TODO: implement
 }
 
-double** symnmf(double** H, double** W){
+double** symnmf(double** H, double** W) {
     // TODO: implement
 }
 
