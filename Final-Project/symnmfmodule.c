@@ -61,22 +61,22 @@ struct vector* convert_py_points_to_vectors(PyObject* points, int first_dim, int
 
 // Given Python points and their dimensions, converts them to C double** and returns the pointer.
 double** convert_py_points_to_matrix(PyObject* points, int first_dim, int second_dim) {
-    double** C_mat = check_alloc(first_dim * malloc(sizeof(double*)));
+    double** C_mat = check_alloc(malloc(first_dim * sizeof(double*)));
 
     for (int i = 0; i < first_dim; i++) {
         C_mat[i] = check_alloc(malloc(second_dim * sizeof(double)));
         for (int j = 0; j < second_dim; j++) {
-            C_mat[i][j] = PyFloat_AsDouble(Pylist_GetItem(PyList_GetItem(points, i), j));
+            C_mat[i][j] = PyFloat_AsDouble(PyList_GetItem(PyList_GetItem(points, i), j));
         }
     }
 
     return C_mat;
 }
 
-PyObject execute_C_func_from_data_points(PyObject* args, double** (*f)(struct vector*), int out_dim) {
+PyObject* execute_C_func_from_data_points(PyObject* args, double** (*f)(double**)) {
     PyObject *data_points, *py_out;
-    struct vector *curr_vec, *temp_vec;
-    struct node* final_node;
+    //struct vector *curr_vec, *temp_vec;
+    //struct node* final_node;
     double **C_out_mat, **C_in_mat;
     double* C_out_arr;
 
@@ -96,7 +96,7 @@ PyObject execute_C_func_from_data_points(PyObject* args, double** (*f)(struct ve
     // TODO: make sure this doesnt break anything (freeing in the function instead of now)
     // final_node = head_node; // for memory clearing
 
-    if (out_dim == 2) {
+    //if (out_dim == 2) {
         // C Function call
         C_out_mat = f(C_in_mat);
 
@@ -105,7 +105,7 @@ PyObject execute_C_func_from_data_points(PyObject* args, double** (*f)(struct ve
         for (int i = 0; i < N; i++) {
             PyList_SetItem(py_out, i, PyList_New(N));
             for (int j = 0; j < N; j++) {
-                PyList_SetItem(PyList_GetItem(C_out_mat, i), j, Py_BuildValue("f", C_out_mat[i][j]));
+                PyList_SetItem(PyList_GetItem(py_out, i), j, Py_BuildValue("f", C_out_mat[i][j]));
             }
         }
 
@@ -116,8 +116,8 @@ PyObject execute_C_func_from_data_points(PyObject* args, double** (*f)(struct ve
         }
         free(C_out_mat);
         free(C_in_mat);
-    }
-
+    //}
+    /*
     else if (out_dim == 1) {
         // C Function call
         C_out_arr = f(C_in_mat);
@@ -125,7 +125,7 @@ PyObject execute_C_func_from_data_points(PyObject* args, double** (*f)(struct ve
         // Converting our C_out_mat to a Python matrix
         py_out = PyList_New(N);
         for (int i = 0; i < N; i++) {
-            PyList_SetItem(py_out, i, C_out_arr[i]);
+            PyList_SetItem(py_out, i, Py_BuildValue("d", C_out_arr[i]));
         }
 
         // Freeing memory
@@ -135,9 +135,41 @@ PyObject execute_C_func_from_data_points(PyObject* args, double** (*f)(struct ve
         }
         free(C_in_mat);
     }
+    */
+    return py_out;
+}
+// created that one because ddg is returning double* and not double**. 
+// in the other function the input f function is expected to be f that return double** so this whole function here is for ddg that return double*.
+PyObject* execute_C_func_from_data_points_1d(PyObject* args, double* (*f)(double**)) {
+    PyObject *data_points, *py_out;
+    double **C_in_mat;
+    double *C_out_arr;
+
+    if (!PyArg_ParseTuple(args, "O", &data_points)) {
+        return NULL;
+    }
+
+    N = PyList_Size(data_points);
+    d = PyList_Size(PyList_GetItem(data_points, 0));
+
+    C_in_mat = convert_py_points_to_matrix(data_points, N, d);
+    C_out_arr = f(C_in_mat);
+
+    py_out = PyList_New(N);
+    for (int i = 0; i < N; i++) {
+        PyList_SetItem(py_out, i, Py_BuildValue("d", C_out_arr[i]));
+    }
+
+    free(C_out_arr);
+    for (int i = 0; i < N; i++) {
+        free(C_in_mat[i]);
+    }
+    free(C_in_mat);
 
     return py_out;
 }
+
+
 
 #pragma endregion
 
@@ -145,17 +177,17 @@ PyObject execute_C_func_from_data_points(PyObject* args, double** (*f)(struct ve
 
 static PyObject* sym_w(PyObject* self, PyObject* args) {
     // TODO: free A
-    return execute_C_func_from_data_points(args, sym, 2);
+    return execute_C_func_from_data_points(args, sym);
 }
 
 static PyObject* ddg_w(PyObject* self, PyObject* args) {
     // TODO: free A and D
-    return execute_C_func_from_data_points(args, ddg, 1);
+    return execute_C_func_from_data_points_1d(args, ddg);
 }
 
 static PyObject* norm_w(PyObject* self, PyObject* args) {
     // TODO: free A, D and W
-    return execute_C_func_from_data_points(args, norm, 2);
+    return execute_C_func_from_data_points(args, norm);
 }
 
 static PyObject* symnmf_w(PyObject* self, PyObject* args) {
@@ -183,7 +215,7 @@ static PyObject* symnmf_w(PyObject* self, PyObject* args) {
     for (int i = 0; i < N; i++) {
         PyList_SetItem(py_out_matrix, i, PyList_New(K));
         for (int j = 0; j < K; j++) {
-            PyList_SetItem(PyList_GetItem(H_out, i), j, Py_BuildValue("f", H_out[i][j]));
+            PyList_SetItem(PyList_GetItem(py_out_matrix, i), j, Py_BuildValue("d", H_out[i][j]));
         }
     }
 
@@ -209,39 +241,39 @@ static PyMethodDef symnmfMethods[] = {
         (PyCFunction)sym_w, /* the C-function that implements the Python function and returns static PyObject*  */
         METH_VARARGS, /* flags indicating parameters accepted for this function */
         PyDoc_STR(  /*  The docstring for the function */
-            """Calculating the Similarity Matrix based on the N data points.
-            Expecting:
-            data_points : list[list[float]]""") },
+            "Calculating the Similarity Matrix based on the N data points.\n"
+            "Expecting:\n"
+            "data_points : list[list[float]]") },
     { "ddg", /* the Python method name that will be used */
         (PyCFunction)ddg_w, /* the C-function that implements the Python function and returns static PyObject*  */
         METH_VARARGS, /* flags indicating parameters accepted for this function */
         PyDoc_STR(  /*  The docstring for the function */
-            """Calculating the Diagonal Degree Matrix based on the N data points.
-            The resulting ddg is an array representing the diagonal itself.
-            Expecting:
-            data_points : list[list[float]]""") },
+            "Calculating the Diagonal Degree Matrix based on the N data points.\n"
+            "The resulting ddg is an array representing the diagonal itself.\n"
+            "Expecting:\n"
+            "data_points : list[list[float]]") },
     { "norm", /* the Python method name that will be used */
         (PyCFunction)norm_w, /* the C-function that implements the Python function and returns static PyObject*  */
         METH_VARARGS, /* flags indicating parameters accepted for this function */
         PyDoc_STR(  /*  The docstring for the function */
-            """Calculating the Normalized Similarity Matrix based on the N data points.
-            Expecting:
-            data_points : list[list[float]]""") },
+            "Calculating the Normalized Similarity Matrix based on the N data points.\n"
+            "Expecting:\n"
+            "data_points : list[list[float]]") },
     { "symnmf", /* the Python method name that will be used */
         (PyCFunction)symnmf_w, /* the C-function that implements the Python function and returns static PyObject*  */
         METH_VARARGS, /* flags indicating parameters accepted for this function */
         PyDoc_STR(  /*  The docstring for the function */
-            """Calculating the Decomposition Matrix H that associates each data point to a cluster.
-            Expecting:
-            H_0 : list[list[float]], W : list[list[float]], N : int, d : int, K : int""") },
+            "Calculating the Decomposition Matrix H that associates each data point to a cluster.\n"
+            "Expecting:\n"
+            "H_0 : list[list[float]], W : list[list[float]], N : int, d : int, K : int") },
     { NULL, NULL, 0, NULL } /* The last entry must be all NULL as shown to act as a
                   sentinel. Python looks for this entry to know that all
                   of the functions for the module have been defined. */
 };
 
 // This initiates the module using the above definitions.
-static struct PyModuleDef symnmfmodule = {
-    PyModuleDef_HEAD_INIT, "symnmf", /* pythonic import name of module. */
+static struct PyModuleDef mysymnmfmodule = {
+    PyModuleDef_HEAD_INIT, "mysymnmf", /* pythonic import name of module. */
     NULL, /* module documentation, may be NULL */
     -1, /* size of per-interpreter state of the module, or -1 if the module
            keeps state in global variables. */
@@ -250,10 +282,10 @@ static struct PyModuleDef symnmfmodule = {
 };
 
 // When a Python program imports your module for the first time, it will call PyInit_symnmf():
-PyMODINIT_FUNC PyInit_symnmf(void)
+PyMODINIT_FUNC PyInit_mysymnmf(void)
 {
     PyObject* m;
-    m = PyModule_Create(&symnmfmodule);
+    m = PyModule_Create(&mysymnmfmodule);
     if (!m) {
         return NULL;
     }
