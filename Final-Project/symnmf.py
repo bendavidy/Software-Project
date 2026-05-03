@@ -42,6 +42,7 @@ def main():
 
         elif goal == "ddg":
             result = mysymnmf.ddg(X)
+            # TODO: here result is a 1-D array representing the diagonal. need to make it a matrix before printing
 
         elif goal == "norm":
             result = mysymnmf.norm(X)
