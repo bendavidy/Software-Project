@@ -4,6 +4,8 @@
 
 // --------------- Global variables ---------------
 int N, K, d, iter = 300;
+extern double **A, **W;
+extern double* D;
 double eps = 1e-4;
 struct vector* head_vec;
 struct node* head_node;
@@ -107,23 +109,13 @@ PyObject execute_C_func_from_data_points(PyObject* args, double** (*f)(struct ve
             }
         }
 
-        // Freeing C_out_mat's memory
+        // Freeing memory
         for (int i = 0; i < N; i++) {
             free(C_out_mat[i]);
+            free(C_in_mat[i]);
         }
         free(C_out_mat);
-
-        // Freeing data memory
-        // curr_vec = head_vec;
-        // while (curr_vec != NULL) {
-        //     head_node = curr_vec->nodes;
-        //     free_nodes(head_node);
-        //     temp_vec = curr_vec;
-        //     curr_vec = curr_vec->next;
-        //     free(temp_vec);
-        // }
-        // free(final_node);
-
+        free(C_in_mat);
     }
 
     else if (out_dim == 1) {
@@ -136,8 +128,12 @@ PyObject execute_C_func_from_data_points(PyObject* args, double** (*f)(struct ve
             PyList_SetItem(py_out, i, C_out_arr[i]);
         }
 
-        // Freeing C_out_mat's memory
+        // Freeing memory
         free(C_out_arr);
+        for (int i = 0; i < N; i++) {
+            free(C_in_mat[i]);
+        }
+        free(C_in_mat);
     }
 
     return py_out;
@@ -148,14 +144,17 @@ PyObject execute_C_func_from_data_points(PyObject* args, double** (*f)(struct ve
 #pragma region Function Wrappers
 
 static PyObject* sym_w(PyObject* self, PyObject* args) {
+    // TODO: free A
     return execute_C_func_from_data_points(args, sym, 2);
 }
 
 static PyObject* ddg_w(PyObject* self, PyObject* args) {
+    // TODO: free A and D
     return execute_C_func_from_data_points(args, ddg, 1);
 }
 
 static PyObject* norm_w(PyObject* self, PyObject* args) {
+    // TODO: free A, D and W
     return execute_C_func_from_data_points(args, norm, 2);
 }
 
@@ -188,22 +187,15 @@ static PyObject* symnmf_w(PyObject* self, PyObject* args) {
         }
     }
 
-    // Freeing H_out's memory
+    // Freeing memory
     for (int i = 0; i < N; i++) {
         free(H_out[i]);
+        free(H_in_mat[i]);
+        free(W_in_mat[i]);
     }
     free(H_out);
-
-    // Freeing data memory
-    // curr_vec = head_vec;
-    // while (curr_vec != NULL) {
-    //     head_node = curr_vec->nodes;
-    //     free_nodes(head_node);
-    //     temp_vec = curr_vec;
-    //     curr_vec = curr_vec->next;
-    //     free(temp_vec);
-    // }
-    // free(final_node);
+    free(H_in_mat);
+    free(W_in_mat);
 
     return py_out_matrix;
 }

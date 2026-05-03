@@ -1,10 +1,16 @@
+General:
+    - Function tests
+        [ ] From C main()
+        [ ] From Python
+    [ ] memory management
+
 C implementation:
-    [ ] sym() - similarity matrix 1.1
-    [ ] ddg() - diagonal degree matrix 1.2
-    [ ] norm() - normalized similarity matrix 1.3
-    [ ] symnmf() - finding H 1.4
+    [X] sym() - similarity matrix 1.1
+    [X] ddg() - diagonal degree matrix 1.2
+    [X] norm() - normalized similarity matrix 1.3
+    [X] symnmf() - finding H 1.4
     
-    [ ] frob() - calculating Frobenius norm
+    [X] frob_squared() - calculating Frobenius norm (without the squared root)
     [ ] main() - parse CMD arguments and print result based on goal
 
 Python implementation:
@@ -12,13 +18,13 @@ Python implementation:
     [ ] print matrix function
 
 C Python API:
-    [ ]Y write symnmfmodule.c
+    [X]Y write symnmfmodule.c
         - sym
         - ddg
         - norm
         - symnmf
     [X]Y header file
-    [ ]Y setup.py
+    [X]Y setup.py
 
 [ ] analysis.py
 
@@ -31,3 +37,4 @@ Python function flow:
 
 *** N, d - are inferred in C_sym()
 *** K is inferred in Python (args) and passed along to py_symnmf()
+*** calling one of sym/ddg/norm in C automatically creates the previous prerequisite matrices and saves them in global pointers. 
