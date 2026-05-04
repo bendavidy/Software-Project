@@ -49,10 +49,12 @@ double euclidean_dist_vec(struct node* a, struct node* b) {
 }
 
 double euclidean_dist_squared(double* a, double* b) {
-    int sum = 0;
+    double sum = 0.0;
     for (int i = 0; i < d; i++) {
         sum += (a[i] - b[i]) * (a[i] - b[i]);
     }
+    return sum
+    
 }
 
 void free_nodes(struct node* head)
