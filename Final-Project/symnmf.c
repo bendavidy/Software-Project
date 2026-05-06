@@ -53,7 +53,7 @@ double euclidean_dist_squared(double* a, double* b) {
     for (int i = 0; i < d; i++) {
         sum += (a[i] - b[i]) * (a[i] - b[i]);
     }
-    return sum
+    return sum;
     
 }
 
