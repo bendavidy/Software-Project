@@ -138,8 +138,9 @@ PyObject* execute_C_func_from_data_points(PyObject* args, double** (*f)(double**
     */
     return py_out;
 }
-// created that one because ddg is returning double* and not double**. 
+// created that one because ddg is returning double* and not double**.
 // in the other function the input f function is expected to be f that return double** so this whole function here is for ddg that return double*.
+// TODO: try turning the original function's pointer to void* and maybe we wont have to use this duplicate function
 PyObject* execute_C_func_from_data_points_1d(PyObject* args, double* (*f)(double**)) {
     PyObject *data_points, *py_out;
     double **C_in_mat;
