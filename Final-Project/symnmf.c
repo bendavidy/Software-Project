@@ -9,8 +9,8 @@
 
 /* --------------- Global and extern variables declerations --------------- */
 // TODO: this was set to avoid compilation error while testing. figure out how to do this when submitting
-int N, K = 0, iter = 0, d;
-double eps = 0;
+int N, K, d, iter = 300;
+double eps = 1e-4;
 struct vector* head_vec;
 // extern int N, K, iter, d;
 // extern double eps;
@@ -28,7 +28,6 @@ void* check_alloc(void* p);
 double euclidean_dist_squared(double* a, double* b);
 void free_nodes(struct node* head);
 struct node* deep_clone_nodes(struct node* node); /* this function will take */
-double** convert_vector_points_to_matrix(struct vector* head_vec, int first_dim, int second_dim);
 
 void* check_alloc(void* p)
 {
@@ -104,7 +103,9 @@ int check_file_extension(char* filename, char* ext) {
     return strcmp(dot + 1, ext) == 0;
 }
 
-void print_vector_nodes(struct node* p) {
+void print_vector_nodes(struct node* p)
+// TODO: test this
+{
     int first;
     first = 1;
 
@@ -118,39 +119,16 @@ void print_vector_nodes(struct node* p) {
     }
 }
 
-void print_double_matrix(double** mat, int first_dim, int second_dim) {
-    for (int i = 0; i < first_dim; i++) {
+void print_double_matrix(double** mat)
+// TODO: test this
+{
+    for (int i = 0; i < N; i++) {
         printf("%.4f", mat[i][0]);
-        for (int j = 1; j < second_dim; j++) {
+        for (int j = 1; j < N; j++) {
             printf(",%.4f", mat[i][j]);
         }
         printf("\n");
     }
-}
-
-double** convert_vector_points_to_matrix(struct vector* head_vec, int first_dim, int second_dim) {
-    double** mat = check_alloc(malloc(first_dim * sizeof(double*)));
-    struct node* curr_node;
-    struct vector* curr_vec = head_vec;
-
-    for (int i = 0; i < first_dim; i++) {
-        curr_node = curr_vec->nodes;
-        mat[i] = check_alloc(malloc(second_dim * sizeof(double)));
-        for (int j = 0; j < second_dim; j++) {
-            mat[i][j] = curr_node->value;
-            curr_node = curr_node->next;
-        }
-        curr_vec = curr_vec->next;
-    }
-
-    return mat;
-}
-
-void free_mat(double** mat) {
-    for (int i = 0; i < N; i++) {
-        free(mat[i]);
-    }
-    free(mat);
 }
 
 // Calculating Frobenius norm (without the sqrt) of a NxK matrix
@@ -163,7 +141,6 @@ double frob_squared(double** M) {
     }
     return sum;
 }
-
 double** sym(double** C_in) {
     A = check_alloc(malloc(N * sizeof(double*)));
     for (int i = 0; i < N; i++) {
@@ -172,12 +149,13 @@ double** sym(double** C_in) {
 
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
-            A[i][j] = (i == j) ? exp(-euclidean_dist_squared(C_in[i], C_in[j]) / 2) : 0;
+            A[i][j] = (i != j) ? exp(-euclidean_dist_squared(C_in[i], C_in[j]) / 2) : 0;
         }
     }
 
     return A;
 }
+
 
 double* ddg(double** C_in) {
     A = sym(C_in);
@@ -196,6 +174,27 @@ double* ddg(double** C_in) {
 }
 
 double** norm(double** C_in) {
+    /* W = D^(-1/2) * A * D^(-1/2) */
+    D = ddg(C_in);
+    W = check_alloc(malloc(N * sizeof(double*)));
+    for (int i = 0; i < N; i++) {
+        W[i] = check_alloc(malloc(N * sizeof(double)));
+    }
+
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            if (D[i] == 0.0 || D[j] == 0.0) {
+                W[i][j] = 0.0;
+            } else {
+                W[i][j] = A[i][j] / sqrt(D[i] * D[j]);
+            }
+        }
+    }
+
+    return W;
+}
+/*
+double** norm(double** C_in) {
     // W_ij = (d_i)(d_j)(A_ij)
     D = ddg(C_in);
     W = check_alloc(malloc(N * sizeof(double*)));
@@ -211,6 +210,91 @@ double** norm(double** C_in) {
 
     return W;
 }
+    */
+
+double** symnmf(double** H, double** W_mat) {
+    double **H_old, **H_new, **diff, **tmp;
+    double numerator, denominator, inner;
+
+    H_old = check_alloc(malloc(N * sizeof(double*)));
+    H_new = check_alloc(malloc(N * sizeof(double*)));
+    diff  = check_alloc(malloc(N * sizeof(double*)));
+
+    for (int i = 0; i < N; i++) {
+        H_old[i] = check_alloc(malloc(K * sizeof(double)));
+        H_new[i] = check_alloc(malloc(K * sizeof(double)));
+        diff[i]  = check_alloc(malloc(K * sizeof(double)));
+
+        for (int j = 0; j < K; j++) {
+            H_old[i][j] = H[i][j];   /* copy initial H0 */
+            H_new[i][j] = 0.0;
+            diff[i][j]  = 0.0;
+        }
+    }
+
+    for (int it = 0; it < iter; it++) {
+
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < K; j++) {
+
+                /* numerator = (W * H_old)[i][j] */
+                numerator = 0.0;
+                for (int l = 0; l < N; l++) {
+                    numerator += W_mat[i][l] * H_old[l][j];
+                }
+
+                /* denominator = (H_old * H_old^T * H_old)[i][j] */
+                denominator = 0.0;
+                for (int m = 0; m < N; m++) {
+                    inner = 0.0;
+                    for (int r = 0; r < K; r++) {
+                        inner += H_old[i][r] * H_old[m][r];
+                    }
+                    denominator += inner * H_old[m][j];
+                }
+
+                if (denominator == 0.0) {
+                    denominator = 1e-9;
+                }
+
+                H_new[i][j] = H_old[i][j] * (0.5 + 0.5 * (numerator / denominator));
+            }
+        }
+
+        /* diff = H_new - H_old */
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < K; j++) {
+                diff[i][j] = H_new[i][j] - H_old[i][j];
+            }
+        }
+
+        if (frob_squared(diff) < eps) {
+            for (int i = 0; i < N; i++) {
+                free(H_old[i]);
+                free(diff[i]);
+            }
+            free(H_old);
+            free(diff);
+            return H_new;
+        }
+
+        /* swap H_old and H_new */
+        tmp = H_old;
+        H_old = H_new;
+        H_new = tmp;
+    }
+
+    /* if max iterations reached, final answer is in H_old */
+    for (int i = 0; i < N; i++) {
+        free(H_new[i]);
+        free(diff[i]);
+    }
+    free(H_new);
+    free(diff);
+
+    return H_old;
+}
+/*
 
 double** symnmf(double** H, double** W) { // This W is unrelated to the global W. This is what we got from Python
     double **H_new, **H_old, **temp, numerator = 0, denominator = 1e-6, mid_sum = 0;
@@ -226,6 +310,10 @@ double** symnmf(double** H, double** W) { // This W is unrelated to the global W
         temp = H_new;
         H_old = temp;
         H_new = H_old;
+
+        temp = H_old;
+        H_old = H_new;
+        H_new = temp;
         // calculate H_new. add 1e-6 to denominator to avoid division by 0 (from class forum)
         for (int i = 0; i < N; i++) {
             for (int j = 0; j < K; j++) {
@@ -260,49 +348,43 @@ double** symnmf(double** H, double** W) { // This W is unrelated to the global W
 
     return H_new;
 }
+    */
 
 // parse CMD arguments and print result based on goal
 // Defined in 2.2
 int main(int argc, char* argv[]) {
-    struct vector *curr_vec, *next_vec;
+    struct vector *curr_vec, *next_vec; /*, *printed_vec;*/
     struct node *head_node, *curr_node, *final_node; /* next_node; */
+    /* struct vector **centroids; centroids will point to the first elem of [vector*,vector*,..,vector*] after we will allocate space later.. */
     double n;
     char c;
     struct vector* temp_vec;
     int k;
     int it;
-    char *end, *goal, *filename;
-    FILE* input_file;
-    double** input_mat;
+    char *end, *goal, *input_file;
 
     if (argc != 3) {
-        printf("%s", "ERROR 1\n");
         printf("%s", "An Error Has Occurred\n");
         exit(1);
     } else {
         goal = argv[1];
-        filename = argv[2];
-        if (!check_file_extension(filename, "txt")) {
-            printf("%s", "ERROR 2\n");
+        input_file = argv[2];
+        if (!check_file_extension(input_file, "txt")) {
             printf("%s", "An Error Has Occurred\n");
             exit(1);
         }
     }
+    // TODO: delete this - debug printing
+    printf("goal = %s, file is %s\n", goal, input_file);
 
-    if (!strcmp(goal, "sym") && !strcmp(goal, "ddg") && !strcmp(goal, "norm")) {
-        printf("%s", "ERROR 3\n");
-        printf("%s", "An Error Has Occurred\n");
-        exit(1);
-    }
-
-    if ((input_file = fopen(filename, "r")) == NULL) {
-        printf("%s", "ERROR 4\n");
-        printf("%s", "An Error Has Occurred\n");
-        exit(1);
-    }
-
-    // [ ] call sym/ddg/norm function based on goal, and print the output
-    // [ ] ddg print need extra care - printing it should include zeros everywhere except for the diagonal
+    // TODO: continue main function here:
+    // 0. validating "goal" input and printing an error otherwise
+    // 1. reading input data into the vector/node struct
+    // 2. allocating N,d
+    // 3. converting the vectors to a double** matrix (can use a variation of the same functino we wrote for PyObject)
+    // 4. call sym/ddg/norm function based on goal, and print the output
+    // 5. ddg print need extra care - printing it should include zeros everywhere except for the diagonal
+    // copied code from kmeans.c - use this
 
     head_node = check_alloc(malloc(sizeof(struct node)));
     curr_node = head_node;
@@ -311,9 +393,10 @@ int main(int argc, char* argv[]) {
     head_vec = check_alloc(malloc(sizeof(struct vector)));
     curr_vec = head_vec;
     curr_vec->next = NULL;
-
-    while (fscanf(input_file, "%lf%c", &n, &c) == 2) {
+    
+    while (scanf("%lf%c", &n, &c) == 2) {
         N++;
+
         if (c == '\n') {
             curr_node->value = n;
             curr_vec->nodes = head_node;
@@ -340,51 +423,11 @@ int main(int argc, char* argv[]) {
     final_node = head_node;
 
     N = (int)(N / d);
-
-    input_mat = convert_vector_points_to_matrix(head_vec, N, d);
-    print_double_matrix(input_mat, N, d);
-
-    printf("%i\n", strcmp(goal, "sym"));
-    printf("%i\n", strcmp(goal, "ddg"));
-    printf("%i\n", strcmp(goal, "norm"));
-
-    if (strcmp(goal, "sym")) {
-        printf("BEFORE\n");
-        A = sym(input_mat);
-        printf("DURING\n");
-        print_double_matrix(A, N, N);
-        printf("AFTER\n");
-    } else if (strcmp(goal, "ddg")) {
-        D = ddg(input_mat);
-        printf("%.4f", D[0]);
-        for (int i = 1; i < N; i++) {
-            printf("%.4f", D[i]);
-        }
-        printf("\n");
-    } else if (strcmp(goal, "norm")) {
-        W = norm(input_mat);
-        print_double_matrix(W, N, N);
+    K = strtol(argv[1], &end, 10);
+    if ((end == argv[1]) || (*end != '\0') || (K <= 1) || (K >= N)) {
+        printf("%s", "Incorrect number of clusters!\n");
+        exit(1);
     }
-
-    /* --------------- free memory --------------- */
-    curr_vec = head_vec;
-    while (curr_vec != NULL) {
-        head_node = curr_vec->nodes;
-        free_nodes(head_node);
-        temp_vec = curr_vec;
-        curr_vec = curr_vec->next;
-        free(temp_vec);
-    }
-    free(final_node);
-
-    free_mat(input_mat);
-
-    if (A)
-        free_mat(A);
-    if (D)
-        free(D);
-    if (W)
-        free_mat(W);
 
     return 0;
 }
