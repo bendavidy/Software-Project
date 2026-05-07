@@ -9,7 +9,7 @@
 
 /* --------------- Global and extern variables declerations --------------- */
 // TODO: this was set to avoid compilation error while testing. figure out how to do this when submitting
-int N = 0, K = 0, iter = 0, d = 0;
+int N, K = 0, iter = 0, d;
 double eps = 0;
 struct vector* head_vec;
 // extern int N, K, iter, d;
@@ -28,6 +28,7 @@ void* check_alloc(void* p);
 double euclidean_dist_squared(double* a, double* b);
 void free_nodes(struct node* head);
 struct node* deep_clone_nodes(struct node* node); /* this function will take */
+double** convert_vector_points_to_matrix(struct vector* head_vec, int first_dim, int second_dim);
 
 void* check_alloc(void* p)
 {
@@ -103,9 +104,7 @@ int check_file_extension(char* filename, char* ext) {
     return strcmp(dot + 1, ext) == 0;
 }
 
-void print_vector_nodes(struct node* p)
-// TODO: test this
-{
+void print_vector_nodes(struct node* p) {
     int first;
     first = 1;
 
@@ -119,16 +118,39 @@ void print_vector_nodes(struct node* p)
     }
 }
 
-void print_double_matrix(double** mat)
-// TODO: test this
-{
-    for (int i = 0; i < N; i++) {
+void print_double_matrix(double** mat, int first_dim, int second_dim) {
+    for (int i = 0; i < first_dim; i++) {
         printf("%.4f", mat[i][0]);
-        for (int j = 1; j < N; j++) {
+        for (int j = 1; j < second_dim; j++) {
             printf(",%.4f", mat[i][j]);
         }
         printf("\n");
     }
+}
+
+double** convert_vector_points_to_matrix(struct vector* head_vec, int first_dim, int second_dim) {
+    double** mat = check_alloc(malloc(first_dim * sizeof(double*)));
+    struct node* curr_node;
+    struct vector* curr_vec = head_vec;
+
+    for (int i = 0; i < first_dim; i++) {
+        curr_node = curr_vec->nodes;
+        mat[i] = check_alloc(malloc(second_dim * sizeof(double)));
+        for (int j = 0; j < second_dim; j++) {
+            mat[i][j] = curr_node->value;
+            curr_node = curr_node->next;
+        }
+        curr_vec = curr_vec->next;
+    }
+
+    return mat;
+}
+
+void free_mat(double** mat) {
+    for (int i = 0; i < N; i++) {
+        free(mat[i]);
+    }
+    free(mat);
 }
 
 // Calculating Frobenius norm (without the sqrt) of a NxK matrix
@@ -141,6 +163,7 @@ double frob_squared(double** M) {
     }
     return sum;
 }
+
 double** sym(double** C_in) {
     A = check_alloc(malloc(N * sizeof(double*)));
     for (int i = 0; i < N; i++) {
@@ -241,39 +264,46 @@ double** symnmf(double** H, double** W) { // This W is unrelated to the global W
 // parse CMD arguments and print result based on goal
 // Defined in 2.2
 int main(int argc, char* argv[]) {
-    struct vector *curr_vec, *next_vec; /*, *printed_vec;*/
+    struct vector *curr_vec, *next_vec;
     struct node *head_node, *curr_node, *final_node; /* next_node; */
-    /* struct vector **centroids; centroids will point to the first elem of [vector*,vector*,..,vector*] after we will allocate space later.. */
     double n;
     char c;
     struct vector* temp_vec;
     int k;
     int it;
-    char *end, *goal, *input_file;
+    char *end, *goal, *filename;
+    FILE* input_file;
+    double** input_mat;
 
     if (argc != 3) {
+        printf("%s", "ERROR 1\n");
         printf("%s", "An Error Has Occurred\n");
         exit(1);
     } else {
         goal = argv[1];
-        input_file = argv[2];
-        if (!check_file_extension(input_file, "txt")) {
+        filename = argv[2];
+        if (!check_file_extension(filename, "txt")) {
+            printf("%s", "ERROR 2\n");
             printf("%s", "An Error Has Occurred\n");
             exit(1);
         }
     }
-    // TODO: delete this - debug printing
-    printf("goal = %s, file is %s\n", goal, input_file);
 
-    // TODO: continue main function here:
-    // 0. validating "goal" input and printing an error otherwise
-    // 1. reading input data into the vector/node struct
-    // 2. allocating N,d
-    // 3. converting the vectors to a double** matrix (can use a variation of the same functino we wrote for PyObject)
-    // 4. call sym/ddg/norm function based on goal, and print the output
-    // 5. ddg print need extra care - printing it should include zeros everywhere except for the diagonal
+    if (!strcmp(goal, "sym") && !strcmp(goal, "ddg") && !strcmp(goal, "norm")) {
+        printf("%s", "ERROR 3\n");
+        printf("%s", "An Error Has Occurred\n");
+        exit(1);
+    }
 
-    // copied code from kmeans.c - use this
+    if ((input_file = fopen(filename, "r")) == NULL) {
+        printf("%s", "ERROR 4\n");
+        printf("%s", "An Error Has Occurred\n");
+        exit(1);
+    }
+
+    // [ ] call sym/ddg/norm function based on goal, and print the output
+    // [ ] ddg print need extra care - printing it should include zeros everywhere except for the diagonal
+
     head_node = check_alloc(malloc(sizeof(struct node)));
     curr_node = head_node;
     curr_node->next = NULL;
@@ -282,7 +312,7 @@ int main(int argc, char* argv[]) {
     curr_vec = head_vec;
     curr_vec->next = NULL;
 
-    while (scanf("%lf%c", &n, &c) == 2) {
+    while (fscanf(input_file, "%lf%c", &n, &c) == 2) {
         N++;
         if (c == '\n') {
             curr_node->value = n;
@@ -310,11 +340,51 @@ int main(int argc, char* argv[]) {
     final_node = head_node;
 
     N = (int)(N / d);
-    K = strtol(argv[1], &end, 10);
-    if ((end == argv[1]) || (*end != '\0') || (K <= 1) || (K >= N)) {
-        printf("%s", "Incorrect number of clusters!\n");
-        exit(1);
+
+    input_mat = convert_vector_points_to_matrix(head_vec, N, d);
+    print_double_matrix(input_mat, N, d);
+
+    printf("%i\n", strcmp(goal, "sym"));
+    printf("%i\n", strcmp(goal, "ddg"));
+    printf("%i\n", strcmp(goal, "norm"));
+
+    if (strcmp(goal, "sym")) {
+        printf("BEFORE\n");
+        A = sym(input_mat);
+        printf("DURING\n");
+        print_double_matrix(A, N, N);
+        printf("AFTER\n");
+    } else if (strcmp(goal, "ddg")) {
+        D = ddg(input_mat);
+        printf("%.4f", D[0]);
+        for (int i = 1; i < N; i++) {
+            printf("%.4f", D[i]);
+        }
+        printf("\n");
+    } else if (strcmp(goal, "norm")) {
+        W = norm(input_mat);
+        print_double_matrix(W, N, N);
     }
+
+    /* --------------- free memory --------------- */
+    curr_vec = head_vec;
+    while (curr_vec != NULL) {
+        head_node = curr_vec->nodes;
+        free_nodes(head_node);
+        temp_vec = curr_vec;
+        curr_vec = curr_vec->next;
+        free(temp_vec);
+    }
+    free(final_node);
+
+    free_mat(input_mat);
+
+    if (A)
+        free_mat(A);
+    if (D)
+        free(D);
+    if (W)
+        free_mat(W);
 
     return 0;
 }

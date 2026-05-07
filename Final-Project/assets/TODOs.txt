@@ -3,7 +3,7 @@ General:
         [ ] From C main()
         [ ] From Python
     [ ] memory management
-    [ ] error handling EVERYWHERE
+    [ ] error handling EVERYWHERE - make sure every printf() is as it should
     [ ] make sure all functino are declared in header file and there are no unnecessary definitions
 
 C implementation:
