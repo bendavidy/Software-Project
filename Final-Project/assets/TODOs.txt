@@ -5,6 +5,7 @@ General:
     [ ] memory management
     [ ] error handling EVERYWHERE - make sure every printf() is as it should
     [ ] make sure all functino are declared in header file and there are no unnecessary definitions
+    [ ] go over TODOs
 
 C implementation:
     [X] sym() - similarity matrix 1.1
@@ -13,7 +14,7 @@ C implementation:
     [X] symnmf() - finding H 1.4
     
     [X] frob_squared() - calculating Frobenius norm (without the squared root)
-    [ ] main() - parse CMD arguments and print result based on goal
+    [X] main() - parse CMD arguments and print result based on goal
 
 Python implementation:
     [ ] initializing H

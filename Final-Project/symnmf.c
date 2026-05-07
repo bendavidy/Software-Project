@@ -1,30 +1,27 @@
-#define _GNU_SOURCE // TODO: figure out if we really need that
+#define _GNU_SOURCE /* TODO: figure out if we really need that */
 
 #include "symnmf.h"
-// TODO: what do we need out of those?
+/* TODO: what do we need out of those? */
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 /* --------------- Global and extern variables declerations --------------- */
-// TODO: this was set to avoid compilation error while testing. figure out how to do this when submitting
-int N, K = 0, iter = 0, d;
+/* TODO: this was set to avoid compilation error while testing. figure out how to do this when submitting */
+int N, K = 0, iter = 0, d = 0;
 double eps = 0;
 struct vector* head_vec;
-// extern int N, K, iter, d;
-// extern double eps;
-// extern struct vector* head_vec;
+/* extern int N, K, iter, d; */
+/* extern double eps; */
+/* extern struct vector* head_vec; */
 
 double **A, **W;
 double* D;
 
-// struct vector** assignments; /* assignments[j] points to the first vector in the centroids[j] cluster, connected with next_in_cluster */
-// struct vector** centroids; /* centroids will point to the first elem of [vector*,vector*,..,vector*] after we will allocate space later.. */
-
 /* --------------- Function declerations (prototypes) and implementations: --------------- */
 void* check_alloc(void* p);
-// double euclidean_dist_vec(struct node* a, struct node* b);
+/* double euclidean_dist_vec(struct node* a, struct node* b); */
 double euclidean_dist_squared(double* a, double* b);
 void free_nodes(struct node* head);
 struct node* deep_clone_nodes(struct node* node); /* this function will take */
@@ -39,27 +36,13 @@ void* check_alloc(void* p)
     return p;
 }
 
-// double euclidean_dist_vec(struct node* a, struct node* b) {
-//     int l;
-//     double sub, sum = 0.0;
-//     for (l = 0; l < d; l++) {
-//         sub = (a->value - b->value);
-//         sub = sub * sub;
-//         sum += sub;
-//         a = a->next;
-//         b = b->next;
-//     }
-//     sum = sqrt(sum);
-//     return sum;
-// }
-
 double euclidean_dist_squared(double* a, double* b) {
     double sum = 0.0;
-    for (int i = 0; i < d; i++) {
+    int i;
+    for (i = 0; i < d; i++) {
         sum += (a[i] - b[i]) * (a[i] - b[i]);
     }
     return sum;
-    
 }
 
 void free_nodes(struct node* head)
@@ -119,9 +102,10 @@ void print_vector_nodes(struct node* p) {
 }
 
 void print_double_matrix(double** mat, int first_dim, int second_dim) {
-    for (int i = 0; i < first_dim; i++) {
+    int i, j;
+    for (i = 0; i < first_dim; i++) {
         printf("%.4f", mat[i][0]);
-        for (int j = 1; j < second_dim; j++) {
+        for (j = 1; j < second_dim; j++) {
             printf(",%.4f", mat[i][j]);
         }
         printf("\n");
@@ -133,10 +117,11 @@ double** convert_vector_points_to_matrix(struct vector* head_vec, int first_dim,
     struct node* curr_node;
     struct vector* curr_vec = head_vec;
 
-    for (int i = 0; i < first_dim; i++) {
+    int i, j;
+    for (i = 0; i < first_dim; i++) {
         curr_node = curr_vec->nodes;
         mat[i] = check_alloc(malloc(second_dim * sizeof(double)));
-        for (int j = 0; j < second_dim; j++) {
+        for (j = 0; j < second_dim; j++) {
             mat[i][j] = curr_node->value;
             curr_node = curr_node->next;
         }
@@ -147,17 +132,19 @@ double** convert_vector_points_to_matrix(struct vector* head_vec, int first_dim,
 }
 
 void free_mat(double** mat) {
-    for (int i = 0; i < N; i++) {
+    int i;
+    for (i = 0; i < N; i++) {
         free(mat[i]);
     }
     free(mat);
 }
 
-// Calculating Frobenius norm (without the sqrt) of a NxK matrix
+/* Calculating Frobenius norm (without the sqrt) of a NxK matrix */
 double frob_squared(double** M) {
     double sum = 0;
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < K; j++) {
+    int i, j;
+    for (i = 0; i < N; i++) {
+        for (j = 0; j < K; j++) {
             sum += (M[i][j]) * (M[i][j]);
         }
     }
@@ -165,14 +152,21 @@ double frob_squared(double** M) {
 }
 
 double** sym(double** C_in) {
+    int i, j;
+    printf("N = %i, d = %i\n", N, d);
     A = check_alloc(malloc(N * sizeof(double*)));
-    for (int i = 0; i < N; i++) {
+    for (i = 0; i < N; i++) {
         A[i] = check_alloc(malloc(N * sizeof(double)));
     }
 
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            A[i][j] = (i == j) ? exp(-euclidean_dist_squared(C_in[i], C_in[j]) / 2) : 0;
+    for (i = 0; i < N; i++) {
+        for (j = 0; j < N; j++) {
+            /* if (i == j) { */
+            /*     A[i][j] = 0; */
+            /* } else { */
+            /*     A[i][j] = exp(-euclidean_dist_squared(C_in[i], C_in[j]) / 2); */
+            /* } */
+            A[i][j] = (i != j) ? exp(-euclidean_dist_squared(C_in[i], C_in[j]) / 2) : 0;
         }
     }
 
@@ -180,12 +174,13 @@ double** sym(double** C_in) {
 }
 
 double* ddg(double** C_in) {
+    double sum = 0;
+    int i, j;
     A = sym(C_in);
     D = check_alloc(malloc(N * sizeof(double)));
-    double sum = 0;
 
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
+    for (i = 0; i < N; i++) {
+        for (j = 0; j < N; j++) {
             sum += A[i][j];
         }
         D[i] = sum;
@@ -196,15 +191,20 @@ double* ddg(double** C_in) {
 }
 
 double** norm(double** C_in) {
-    // W_ij = (d_i)(d_j)(A_ij)
+    /* W_ij = (d_i^-1/2)(d_j^-1/2)(A_ij) */
+    int i, j;
     D = ddg(C_in);
     W = check_alloc(malloc(N * sizeof(double*)));
-    for (int i = 0; i < N; i++) {
+    for (i = 0; i < N; i++) {
         W[i] = check_alloc(malloc(N * sizeof(double)));
     }
 
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
+    for (i = 0; i < N; i++) {
+        D[i] = pow(D[i], -1 / 2);
+    }
+
+    for (i = 0; i < N; i++) {
+        for (j = 0; j < N; j++) {
             W[i][j] = (D[i] * D[j]) * A[i][j];
         }
     }
@@ -212,26 +212,27 @@ double** norm(double** C_in) {
     return W;
 }
 
-double** symnmf(double** H, double** W) { // This W is unrelated to the global W. This is what we got from Python
+double** symnmf(double** H, double** W) { /* This W is unrelated to the global W. This is what we got from Python */
     double **H_new, **H_old, **temp, numerator = 0, denominator = 1e-6, mid_sum = 0;
+    int i, j, k, m, l;
 
-    // H_old and H_new are being set in reverse roles because we swap them at the start of the iteration (for memory efficiency)
+    /* H_old and H_new are being set in reverse roles because we swap them at the start of the iteration (for memory efficiency) */
     H_old = check_alloc(malloc(N * sizeof(double*)));
-    for (int i = 0; i < N; i++) {
+    for (i = 0; i < N; i++) {
         H_old[i] = check_alloc(malloc(K * sizeof(double)));
     }
     H_new = H;
 
-    for (int k = 0; k < iter; k++) {
+    for (k = 0; k < iter; k++) {
         temp = H_new;
         H_old = temp;
         H_new = H_old;
-        // calculate H_new. add 1e-6 to denominator to avoid division by 0 (from class forum)
-        for (int i = 0; i < N; i++) {
-            for (int j = 0; j < K; j++) {
-                // Calculating numerator & denominator
-                for (int m = 0; m < N; m++) {
-                    for (int l = 0; l < N; l++) {
+        /* calculate H_new. add 1e-6 to denominator to avoid division by 0 (from class forum) */
+        for (i = 0; i < N; i++) {
+            for (j = 0; j < K; j++) {
+                /* Calculating numerator & denominator */
+                for (m = 0; m < N; m++) {
+                    for (l = 0; l < N; l++) {
                         numerator += (W[i][l] * H_old[l][j]);
                         mid_sum += (H_old[i][l] * H_old[m][l]);
                     }
@@ -246,9 +247,9 @@ double** symnmf(double** H, double** W) { // This W is unrelated to the global W
             }
         }
 
-        // H_old <= H_new - H_old   // (for eps condition check)
-        for (int i = 0; i < N; i++) {
-            for (int j = 0; j < K; j++) {
+        /* H_old <= H_new - H_old  (for eps condition check) */
+        for (i = 0; i < N; i++) {
+            for (j = 0; j < K; j++) {
                 H_old[i][j] = H_new[i][j] - H_old[i][j];
             }
         }
@@ -261,21 +262,21 @@ double** symnmf(double** H, double** W) { // This W is unrelated to the global W
     return H_new;
 }
 
-// parse CMD arguments and print result based on goal
-// Defined in 2.2
+/* parse CMD arguments and print result based on goal */
+/* Defined in 2.2 */
 int main(int argc, char* argv[]) {
-    struct vector *curr_vec, *next_vec;
-    struct node *head_node, *curr_node, *final_node; /* next_node; */
+    struct vector* curr_vec;
+    struct node *head_node, *curr_node, *final_node;
     double n;
     char c;
     struct vector* temp_vec;
-    int k;
-    int it;
-    char *end, *goal, *filename;
+    char *goal, *filename;
     FILE* input_file;
     double** input_mat;
+    int i, j;
 
     if (argc != 3) {
+        /* TODO: clean error message */
         printf("%s", "ERROR 1\n");
         printf("%s", "An Error Has Occurred\n");
         exit(1);
@@ -283,26 +284,26 @@ int main(int argc, char* argv[]) {
         goal = argv[1];
         filename = argv[2];
         if (!check_file_extension(filename, "txt")) {
+            /* TODO: clean error message */
             printf("%s", "ERROR 2\n");
             printf("%s", "An Error Has Occurred\n");
             exit(1);
         }
     }
 
-    if (!strcmp(goal, "sym") && !strcmp(goal, "ddg") && !strcmp(goal, "norm")) {
+    if (strcmp(goal, "sym") != 0 && strcmp(goal, "ddg") != 0 && strcmp(goal, "norm") != 0) {
+        /* TODO: clean error message */
         printf("%s", "ERROR 3\n");
         printf("%s", "An Error Has Occurred\n");
         exit(1);
     }
 
     if ((input_file = fopen(filename, "r")) == NULL) {
+        /* TODO: clean error message */
         printf("%s", "ERROR 4\n");
         printf("%s", "An Error Has Occurred\n");
         exit(1);
     }
-
-    // [ ] call sym/ddg/norm function based on goal, and print the output
-    // [ ] ddg print need extra care - printing it should include zeros everywhere except for the diagonal
 
     head_node = check_alloc(malloc(sizeof(struct node)));
     curr_node = head_node;
@@ -321,7 +322,7 @@ int main(int argc, char* argv[]) {
             curr_vec = curr_vec->next;
 
             curr_vec->next = NULL;
-            curr_vec->nodes = NULL; /*New line-Shalev*/
+            curr_vec->nodes = NULL;
 
             head_node = check_alloc(malloc(sizeof(struct node)));
             curr_node = head_node;
@@ -342,26 +343,30 @@ int main(int argc, char* argv[]) {
     N = (int)(N / d);
 
     input_mat = convert_vector_points_to_matrix(head_vec, N, d);
-    print_double_matrix(input_mat, N, d);
 
-    printf("%i\n", strcmp(goal, "sym"));
-    printf("%i\n", strcmp(goal, "ddg"));
-    printf("%i\n", strcmp(goal, "norm"));
-
-    if (strcmp(goal, "sym")) {
-        printf("BEFORE\n");
+    if (strcmp(goal, "sym") == 0) {
         A = sym(input_mat);
-        printf("DURING\n");
         print_double_matrix(A, N, N);
-        printf("AFTER\n");
-    } else if (strcmp(goal, "ddg")) {
+
+    } else if (strcmp(goal, "ddg") == 0) {
         D = ddg(input_mat);
-        printf("%.4f", D[0]);
-        for (int i = 1; i < N; i++) {
-            printf("%.4f", D[i]);
+        /* printing D */
+        for (i = 0; i < N - 1; i++) {
+            for (j = 0; j < N - 1; j++) {
+                if (i == j) {
+                    printf("%.4f,", D[i]);
+                } else {
+                    printf("%.4f,", 0.0);
+                }
+            }
+            printf("%.4f\n", 0.0);
         }
-        printf("\n");
-    } else if (strcmp(goal, "norm")) {
+        for (j = 0; j < N - 1; j++) {
+            printf("%.4f,", 0.0);
+        }
+        printf("%.4f\n", D[N - 1]);
+
+    } else if (strcmp(goal, "norm") == 0) {
         W = norm(input_mat);
         print_double_matrix(W, N, N);
     }
