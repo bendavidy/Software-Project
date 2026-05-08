@@ -172,7 +172,6 @@ PyObject* execute_C_func_from_data_points_1d(PyObject* args, double* (*f)(double
 }
 
 
-
 #pragma endregion
 
 #pragma region Function Wrappers
@@ -186,6 +185,7 @@ void free_matrix(double **mat, int rows) {
     }
     free(mat);
 }
+
 
 static PyObject* sym_w(PyObject* self, PyObject* args) {
     // TODO: free A
