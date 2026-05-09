@@ -3,12 +3,13 @@
 #include <Python.h> // still works with the warning
 
 // --------------- Global variables ---------------
-int N, K, d, iter = 300;
+extern int N, K, d, iter;
 extern double **A, **W;
 extern double* D;
-double eps = 1e-4;
-struct vector* head_vec;
+extern double eps;
+extern struct vector* head_vec;
 struct node* head_node;
+
 
 #pragma region C Functions
 
@@ -171,10 +172,20 @@ PyObject* execute_C_func_from_data_points_1d(PyObject* args, double* (*f)(double
 }
 
 
-
 #pragma endregion
 
 #pragma region Function Wrappers
+
+void free_matrix(double **mat, int rows) {
+    if (mat == NULL) {
+        return;
+    }
+    for (int i = 0; i < rows; i++) {
+        free(mat[i]);
+    }
+    free(mat);
+}
+
 
 static PyObject* sym_w(PyObject* self, PyObject* args) {
     // TODO: free A
@@ -183,12 +194,21 @@ static PyObject* sym_w(PyObject* self, PyObject* args) {
 
 static PyObject* ddg_w(PyObject* self, PyObject* args) {
     // TODO: free A and D
-    return execute_C_func_from_data_points_1d(args, ddg);
+    PyObject *out;
+    out = execute_C_func_from_data_points_1d(args, ddg);
+    free_matrix(A, N);
+    
+    return out;
 }
 
 static PyObject* norm_w(PyObject* self, PyObject* args) {
     // TODO: free A, D and W
-    return execute_C_func_from_data_points(args, norm);
+    PyObject *out;
+    out = execute_C_func_from_data_points(args, norm);
+    free_matrix(A, N);
+    free(D);
+
+    return out;
 }
 
 static PyObject* symnmf_w(PyObject* self, PyObject* args) {
@@ -196,7 +216,8 @@ static PyObject* symnmf_w(PyObject* self, PyObject* args) {
     struct node* final_node;
     double **H_in_mat, **W_in_mat, **H_out;
 
-    if (!PyArg_ParseTuple(args, "OOiii", &pyH_0, &pyW, &N, &d, &K)) {
+    if (!PyArg_ParseTuple(args, "OOii", &pyH_0, &pyW, &N, &K)) {
+        // result = mysymnmf.symnmf(H0, W, len(X),k)
         // Recieving the data points as a 2D Python array
         return NULL;
     }
