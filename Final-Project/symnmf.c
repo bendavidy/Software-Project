@@ -200,7 +200,8 @@ double** norm(double** C_in) {
     }
 
     for (i = 0; i < N; i++) {
-        D[i] = pow(D[i], -1 / 2);
+        // D[i] = pow(D[i], -1 / 2);
+        D[i] = 1 / sqrt(D[i]);
     }
 
     for (i = 0; i < N; i++) {
@@ -224,9 +225,9 @@ double** symnmf(double** H, double** W) { /* This W is unrelated to the global W
     H_new = H;
 
     for (k = 0; k < iter; k++) {
-        temp = H_new;
-        H_old = temp;
-        H_new = H_old;
+        temp = H_old;
+        H_old = H_new;
+        H_new = temp;
         /* calculate H_new. add 1e-6 to denominator to avoid division by 0 (from class forum) */
         for (i = 0; i < N; i++) {
             for (j = 0; j < K; j++) {
