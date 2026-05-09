@@ -184,37 +184,34 @@ double** norm(double** C_in) {
     return W;
 }
 
-double** symnmf(double** H, double** W_mat) {
+double** symnmf(double** H, double** W_mat) { /*the initial H0 and W the norm matrix are then inputs. Both computed in symnmf.py*/
     double **H_old, **H_new, **diff, **tmp;
     double numerator, denominator, inner;
     int i, j, it, l, m, r;
 
-    H_old = check_alloc(malloc(N * sizeof(double*)));
+    H_old = check_alloc(malloc(N * sizeof(double*))); /*We will copy H0 to H_old*/
     H_new = check_alloc(malloc(N * sizeof(double*)));
     diff = check_alloc(malloc(N * sizeof(double*)));
 
-    for (i = 0; i < N; i++) {
+    for (i = 0; i < N; i++) { /*H_0ld, H_new and diff should be matrix N x K */
         H_old[i] = check_alloc(malloc(K * sizeof(double)));
-        /* TODO: replace these to calloc */
-        H_new[i] = check_alloc(malloc(K * sizeof(double)));
-        diff[i] = check_alloc(malloc(K * sizeof(double)));
+        H_new[i] = check_alloc(calloc(K, sizeof(double))); /*initializing H_new s.t all enteries are 0*/
+        diff[i] = check_alloc(calloc(K, sizeof(double)));  /*initializing diff s.t all enteries are 0*/
 
         for (j = 0; j < K; j++) {
             H_old[i][j] = H[i][j]; /* copy initial H0 */
-            H_new[i][j] = 0.0;
-            diff[i][j] = 0.0;
         }
     }
 
-    for (it = 0; it < iter; it++) {
+    for (it = 0; it < iter; it++) { /*Until Max iterations = 300 or convergence*/
 
         for (i = 0; i < N; i++) {
             for (j = 0; j < K; j++) {
 
-                /* numerator = (W * H_old)[i][j] */
+               
                 numerator = 0.0;
-                for (l = 0; l < N; l++) {
-                    numerator += W_mat[i][l] * H_old[l][j];
+                for (l = 0; l < N; l++) {  /* numerator = (W * H_old)[i][j] after this loop */
+                    numerator += W_mat[i][l] * H_old[l][j]; 
                 }
 
                 /* denominator = (H_old * H_old^T * H_old)[i][j] */
@@ -242,7 +239,7 @@ double** symnmf(double** H, double** W_mat) {
             }
         }
 
-        if (frob_squared(diff) < eps) {
+        if (frob_squared(diff) < eps) { 
             for (i = 0; i < N; i++) {
                 free(H_old[i]);
                 free(diff[i]);
