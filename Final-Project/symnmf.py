@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 import mysymnmf
+from sklearn.metrics import silhouette_score
 
 
 MAX_ITER = 300
@@ -25,6 +26,9 @@ def print_matrix(matrix):
     for row in matrix:
         print(",".join(f"{float(value):.4f}" for value in row))
 
+def nmf_labels_from_h(H):
+    return np.argmax(np.array(H), axis=1)
+
 
 def main():
     #try:
@@ -36,7 +40,7 @@ def main():
         file_name = sys.argv[3]
 
         X = read_points(file_name)
-        print('hey')
+        
         if goal == "sym":
             result = mysymnmf.sym(X)
 
@@ -50,12 +54,26 @@ def main():
         elif goal == "symnmf":
             W = mysymnmf.norm(X)
             H0 = init_h(W, k)
-            result = mysymnmf.symnmf(H0, W, MAX_ITER, EPS)
+            result = mysymnmf.symnmf(H0, W, len(X),k)
+
+            labels = nmf_labels_from_h(result)
+            score = silhouette_score(np.array(X), labels)
+
 
         else:
             raise Exception()
 
-        print_matrix(result)
+        if goal != "ddg":
+            print_matrix(result)
+        else:
+            print(result)
+
+
+        print("111111111111111111111111111111")
+        if goal == "symnmf":
+            print(f"nmf: {score:.4f}")
+        
+
 
     #except Exception:
         #print("An Error Has Occurred")

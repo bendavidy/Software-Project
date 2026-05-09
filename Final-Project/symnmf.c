@@ -8,9 +8,9 @@
 #include <string.h>
 
 /* --------------- Global and extern variables declerations --------------- */
-/* TODO: this was set to avoid compilation error while testing. figure out how to do this when submitting */
-int N, K = 0, iter = 0, d = 0;
-double eps = 0;
+// TODO: this was set to avoid compilation error while testing. figure out how to do this when submitting
+int N, K, d, iter = 300;
+double eps = 1e-4;
 struct vector* head_vec;
 /* extern int N, K, iter, d; */
 /* extern double eps; */
@@ -25,7 +25,6 @@ void* check_alloc(void* p);
 double euclidean_dist_squared(double* a, double* b);
 void free_nodes(struct node* head);
 struct node* deep_clone_nodes(struct node* node); /* this function will take */
-double** convert_vector_points_to_matrix(struct vector* head_vec, int first_dim, int second_dim);
 
 void* check_alloc(void* p)
 {
@@ -45,6 +44,35 @@ double euclidean_dist_squared(double* a, double* b) {
     return sum;
 }
 
+double** convert_vector_points_to_matrix(struct vector* head_vec, int first_dim, int second_dim) {
+    double** mat = check_alloc(malloc(first_dim * sizeof(double*)));
+    struct node* curr_node;
+    struct vector* curr_vec = head_vec;
+
+    int i, j;
+    for (i = 0; i < first_dim; i++) {
+        curr_node = curr_vec->nodes;
+        mat[i] = check_alloc(malloc(second_dim * sizeof(double)));
+        for (j = 0; j < second_dim; j++) {
+            mat[i][j] = curr_node->value;
+            curr_node = curr_node->next;
+        }
+        curr_vec = curr_vec->next;
+    }
+
+    return mat;
+}
+
+void free_mat(double** mat) {
+    int i;
+    for (i = 0; i < N; i++) {
+        free(mat[i]);
+    }
+    free(mat);
+}
+
+
+
 void free_nodes(struct node* head)
 {
     struct node *curr = head, *tmp;
@@ -54,6 +82,8 @@ void free_nodes(struct node* head)
         free(tmp);
     }
 }
+
+
 
 struct node* deep_clone_nodes(struct node* src_node) /* recieve a pointer to some node and return a pointer to some node */
 {
@@ -87,7 +117,9 @@ int check_file_extension(char* filename, char* ext) {
     return strcmp(dot + 1, ext) == 0;
 }
 
-void print_vector_nodes(struct node* p) {
+void print_vector_nodes(struct node* p)
+// TODO: test this
+{
     int first;
     first = 1;
 
@@ -101,11 +133,12 @@ void print_vector_nodes(struct node* p) {
     }
 }
 
-void print_double_matrix(double** mat, int first_dim, int second_dim) {
-    int i, j;
-    for (i = 0; i < first_dim; i++) {
+void print_double_matrix(double** mat)
+// TODO: test this
+{
+    for (int i = 0; i < N; i++) {
         printf("%.4f", mat[i][0]);
-        for (j = 1; j < second_dim; j++) {
+        for (int j = 1; j < N; j++) {
             printf(",%.4f", mat[i][j]);
         }
         printf("\n");
@@ -150,7 +183,6 @@ double frob_squared(double** M) {
     }
     return sum;
 }
-
 double** sym(double** C_in) {
     int i, j;
     printf("N = %i, d = %i\n", N, d);
@@ -172,6 +204,7 @@ double** sym(double** C_in) {
 
     return A;
 }
+
 
 double* ddg(double** C_in) {
     double sum = 0;
@@ -211,6 +244,91 @@ double** norm(double** C_in) {
 
     return W;
 }
+    */
+
+double** symnmf(double** H, double** W_mat) {
+    double **H_old, **H_new, **diff, **tmp;
+    double numerator, denominator, inner;
+
+    H_old = check_alloc(malloc(N * sizeof(double*)));
+    H_new = check_alloc(malloc(N * sizeof(double*)));
+    diff  = check_alloc(malloc(N * sizeof(double*)));
+
+    for (int i = 0; i < N; i++) {
+        H_old[i] = check_alloc(malloc(K * sizeof(double)));
+        H_new[i] = check_alloc(malloc(K * sizeof(double)));
+        diff[i]  = check_alloc(malloc(K * sizeof(double)));
+
+        for (int j = 0; j < K; j++) {
+            H_old[i][j] = H[i][j];   /* copy initial H0 */
+            H_new[i][j] = 0.0;
+            diff[i][j]  = 0.0;
+        }
+    }
+
+    for (int it = 0; it < iter; it++) {
+
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < K; j++) {
+
+                /* numerator = (W * H_old)[i][j] */
+                numerator = 0.0;
+                for (int l = 0; l < N; l++) {
+                    numerator += W_mat[i][l] * H_old[l][j];
+                }
+
+                /* denominator = (H_old * H_old^T * H_old)[i][j] */
+                denominator = 0.0;
+                for (int m = 0; m < N; m++) {
+                    inner = 0.0;
+                    for (int r = 0; r < K; r++) {
+                        inner += H_old[i][r] * H_old[m][r];
+                    }
+                    denominator += inner * H_old[m][j];
+                }
+
+                if (denominator == 0.0) {
+                    denominator = 1e-9;
+                }
+
+                H_new[i][j] = H_old[i][j] * (0.5 + 0.5 * (numerator / denominator));
+            }
+        }
+
+        /* diff = H_new - H_old */
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < K; j++) {
+                diff[i][j] = H_new[i][j] - H_old[i][j];
+            }
+        }
+
+        if (frob_squared(diff) < eps) {
+            for (int i = 0; i < N; i++) {
+                free(H_old[i]);
+                free(diff[i]);
+            }
+            free(H_old);
+            free(diff);
+            return H_new;
+        }
+
+        /* swap H_old and H_new */
+        tmp = H_old;
+        H_old = H_new;
+        H_new = tmp;
+    }
+
+    /* if max iterations reached, final answer is in H_old */
+    for (int i = 0; i < N; i++) {
+        free(H_new[i]);
+        free(diff[i]);
+    }
+    free(H_new);
+    free(diff);
+
+    return H_old;
+}
+/*
 
 double** symnmf(double** H, double** W) { /* This W is unrelated to the global W. This is what we got from Python */
     double **H_new, **H_old, **temp, numerator = 0, denominator = 1e-6, mid_sum = 0;
@@ -261,6 +379,7 @@ double** symnmf(double** H, double** W) { /* This W is unrelated to the global W
 
     return H_new;
 }
+    */
 
 /* parse CMD arguments and print result based on goal */
 /* Defined in 2.2 */
