@@ -19,7 +19,6 @@ double* D;
 
 /* --------------- Function declerations (prototypes) and implementations: --------------- */
 void* check_alloc(void* p);
-/* double euclidean_dist_vec(struct node* a, struct node* b); */
 double euclidean_dist_squared(double* a, double* b);
 void free_nodes(struct node* head);
 struct node* deep_clone_nodes(struct node* node); /* this function will take */
@@ -33,8 +32,8 @@ void* check_alloc(void* p) {
 }
 
 double euclidean_dist_squared(double* a, double* b) {
-    double sum = 0.0;
     int i;
+    double sum = 0.0;
     for (i = 0; i < d; i++) {
         sum += (a[i] - b[i]) * (a[i] - b[i]);
     }
@@ -131,10 +130,8 @@ double frob_squared(double** M) {
     }
     return sum;
 }
-
 double** sym(double** C_in) {
     int i, j;
-    printf("N = %i, d = %i\n", N, d);
     A = check_alloc(malloc(N * sizeof(double*)));
     for (i = 0; i < N; i++) {
         A[i] = check_alloc(malloc(N * sizeof(double)));
@@ -167,7 +164,6 @@ double* ddg(double** C_in) {
 }
 
 double** norm(double** C_in) {
-    /* W_ij = (d_i^-1/2)(d_j^-1/2)(A_ij) */
     int i, j;
     D = ddg(C_in);
     W = check_alloc(malloc(N * sizeof(double*)));
@@ -176,7 +172,6 @@ double** norm(double** C_in) {
     }
 
     for (i = 0; i < N; i++) {
-        /* D[i] = pow(D[i], -1 / 2); */
         D[i] = 1 / sqrt(D[i]);
     }
 
