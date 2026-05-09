@@ -1,5 +1,3 @@
-#define _GNU_SOURCE /* TODO: figure out if we really need that */
-
 #include "symnmf.h"
 /* TODO: what do we need out of those? */
 #include <math.h>
@@ -8,7 +6,7 @@
 #include <string.h>
 
 /* --------------- Global and extern variables declerations --------------- */
-// TODO: this was set to avoid compilation error while testing. figure out how to do this when submitting
+/* TODO: this was set to avoid compilation error while testing. figure out how to do this when submitting */
 int N, K, d, iter = 300;
 double eps = 1e-4;
 struct vector* head_vec;
@@ -26,8 +24,7 @@ double euclidean_dist_squared(double* a, double* b);
 void free_nodes(struct node* head);
 struct node* deep_clone_nodes(struct node* node); /* this function will take */
 
-void* check_alloc(void* p)
-{
+void* check_alloc(void* p) {
     if (p == NULL) {
         printf("An Error Has Occurred\n");
         exit(1);
@@ -71,10 +68,7 @@ void free_mat(double** mat) {
     free(mat);
 }
 
-
-
-void free_nodes(struct node* head)
-{
+void free_nodes(struct node* head) {
     struct node *curr = head, *tmp;
     while (curr != NULL) {
         tmp = curr;
@@ -82,8 +76,6 @@ void free_nodes(struct node* head)
         free(tmp);
     }
 }
-
-
 
 struct node* deep_clone_nodes(struct node* src_node) /* recieve a pointer to some node and return a pointer to some node */
 {
@@ -117,59 +109,15 @@ int check_file_extension(char* filename, char* ext) {
     return strcmp(dot + 1, ext) == 0;
 }
 
-void print_vector_nodes(struct node* p)
-// TODO: test this
-{
-    int first;
-    first = 1;
-
-    while (p != NULL) {
-        if (!first) {
-            printf(",");
-        }
-        printf("%.4f", p->value);
-        first = 0;
-        p = p->next;
-    }
-}
-
-void print_double_matrix(double** mat)
-// TODO: test this
-{
-    for (int i = 0; i < N; i++) {
+void print_double_matrix(double** mat) {
+    int i, j;
+    for (i = 0; i < N; i++) {
         printf("%.4f", mat[i][0]);
-        for (int j = 1; j < N; j++) {
+        for (j = 1; j < N; j++) {
             printf(",%.4f", mat[i][j]);
         }
         printf("\n");
     }
-}
-
-double** convert_vector_points_to_matrix(struct vector* head_vec, int first_dim, int second_dim) {
-    double** mat = check_alloc(malloc(first_dim * sizeof(double*)));
-    struct node* curr_node;
-    struct vector* curr_vec = head_vec;
-
-    int i, j;
-    for (i = 0; i < first_dim; i++) {
-        curr_node = curr_vec->nodes;
-        mat[i] = check_alloc(malloc(second_dim * sizeof(double)));
-        for (j = 0; j < second_dim; j++) {
-            mat[i][j] = curr_node->value;
-            curr_node = curr_node->next;
-        }
-        curr_vec = curr_vec->next;
-    }
-
-    return mat;
-}
-
-void free_mat(double** mat) {
-    int i;
-    for (i = 0; i < N; i++) {
-        free(mat[i]);
-    }
-    free(mat);
 }
 
 /* Calculating Frobenius norm (without the sqrt) of a NxK matrix */
@@ -183,6 +131,7 @@ double frob_squared(double** M) {
     }
     return sum;
 }
+
 double** sym(double** C_in) {
     int i, j;
     printf("N = %i, d = %i\n", N, d);
@@ -193,18 +142,12 @@ double** sym(double** C_in) {
 
     for (i = 0; i < N; i++) {
         for (j = 0; j < N; j++) {
-            /* if (i == j) { */
-            /*     A[i][j] = 0; */
-            /* } else { */
-            /*     A[i][j] = exp(-euclidean_dist_squared(C_in[i], C_in[j]) / 2); */
-            /* } */
             A[i][j] = (i != j) ? exp(-euclidean_dist_squared(C_in[i], C_in[j]) / 2) : 0;
         }
     }
 
     return A;
 }
-
 
 double* ddg(double** C_in) {
     double sum = 0;
@@ -233,7 +176,7 @@ double** norm(double** C_in) {
     }
 
     for (i = 0; i < N; i++) {
-        // D[i] = pow(D[i], -1 / 2);
+        /* D[i] = pow(D[i], -1 / 2); */
         D[i] = 1 / sqrt(D[i]);
     }
 
@@ -245,44 +188,45 @@ double** norm(double** C_in) {
 
     return W;
 }
-    */
 
 double** symnmf(double** H, double** W_mat) {
     double **H_old, **H_new, **diff, **tmp;
     double numerator, denominator, inner;
+    int i, j, it, l, m, r;
 
     H_old = check_alloc(malloc(N * sizeof(double*)));
     H_new = check_alloc(malloc(N * sizeof(double*)));
-    diff  = check_alloc(malloc(N * sizeof(double*)));
+    diff = check_alloc(malloc(N * sizeof(double*)));
 
-    for (int i = 0; i < N; i++) {
+    for (i = 0; i < N; i++) {
         H_old[i] = check_alloc(malloc(K * sizeof(double)));
+        /* TODO: replace these to calloc */
         H_new[i] = check_alloc(malloc(K * sizeof(double)));
-        diff[i]  = check_alloc(malloc(K * sizeof(double)));
+        diff[i] = check_alloc(malloc(K * sizeof(double)));
 
-        for (int j = 0; j < K; j++) {
-            H_old[i][j] = H[i][j];   /* copy initial H0 */
+        for (j = 0; j < K; j++) {
+            H_old[i][j] = H[i][j]; /* copy initial H0 */
             H_new[i][j] = 0.0;
-            diff[i][j]  = 0.0;
+            diff[i][j] = 0.0;
         }
     }
 
-    for (int it = 0; it < iter; it++) {
+    for (it = 0; it < iter; it++) {
 
-        for (int i = 0; i < N; i++) {
-            for (int j = 0; j < K; j++) {
+        for (i = 0; i < N; i++) {
+            for (j = 0; j < K; j++) {
 
                 /* numerator = (W * H_old)[i][j] */
                 numerator = 0.0;
-                for (int l = 0; l < N; l++) {
+                for (l = 0; l < N; l++) {
                     numerator += W_mat[i][l] * H_old[l][j];
                 }
 
                 /* denominator = (H_old * H_old^T * H_old)[i][j] */
                 denominator = 0.0;
-                for (int m = 0; m < N; m++) {
+                for (m = 0; m < N; m++) {
                     inner = 0.0;
-                    for (int r = 0; r < K; r++) {
+                    for (r = 0; r < K; r++) {
                         inner += H_old[i][r] * H_old[m][r];
                     }
                     denominator += inner * H_old[m][j];
@@ -297,14 +241,14 @@ double** symnmf(double** H, double** W_mat) {
         }
 
         /* diff = H_new - H_old */
-        for (int i = 0; i < N; i++) {
-            for (int j = 0; j < K; j++) {
+        for (i = 0; i < N; i++) {
+            for (j = 0; j < K; j++) {
                 diff[i][j] = H_new[i][j] - H_old[i][j];
             }
         }
 
         if (frob_squared(diff) < eps) {
-            for (int i = 0; i < N; i++) {
+            for (i = 0; i < N; i++) {
                 free(H_old[i]);
                 free(diff[i]);
             }
@@ -320,7 +264,7 @@ double** symnmf(double** H, double** W_mat) {
     }
 
     /* if max iterations reached, final answer is in H_old */
-    for (int i = 0; i < N; i++) {
+    for (i = 0; i < N; i++) {
         free(H_new[i]);
         free(diff[i]);
     }
@@ -329,61 +273,8 @@ double** symnmf(double** H, double** W_mat) {
 
     return H_old;
 }
-/*
-
-double** symnmf(double** H, double** W) { /* This W is unrelated to the global W. This is what we got from Python */
-    double **H_new, **H_old, **temp, numerator = 0, denominator = 1e-6, mid_sum = 0;
-    int i, j, k, m, l;
-
-    /* H_old and H_new are being set in reverse roles because we swap them at the start of the iteration (for memory efficiency) */
-    H_old = check_alloc(malloc(N * sizeof(double*)));
-    for (i = 0; i < N; i++) {
-        H_old[i] = check_alloc(malloc(K * sizeof(double)));
-    }
-    H_new = H;
-
-    for (k = 0; k < iter; k++) {
-        temp = H_old;
-        H_old = H_new;
-        H_new = temp;
-        /* calculate H_new. add 1e-6 to denominator to avoid division by 0 (from class forum) */
-        for (i = 0; i < N; i++) {
-            for (j = 0; j < K; j++) {
-                /* Calculating numerator & denominator */
-                for (m = 0; m < N; m++) {
-                    for (l = 0; l < N; l++) {
-                        numerator += (W[i][l] * H_old[l][j]);
-                        mid_sum += (H_old[i][l] * H_old[m][l]);
-                    }
-                    denominator += (mid_sum * H_old[m][j]);
-                }
-
-                H_new[i][j] = H_old[i][j] * (0.5 + 0.5 * numerator / denominator);
-
-                numerator = 0;
-                denominator = 1e-6;
-                mid_sum = 0;
-            }
-        }
-
-        /* H_old <= H_new - H_old  (for eps condition check) */
-        for (i = 0; i < N; i++) {
-            for (j = 0; j < K; j++) {
-                H_old[i][j] = H_new[i][j] - H_old[i][j];
-            }
-        }
-
-        if (frob_squared(H_old) < eps) {
-            break;
-        }
-    }
-
-    return H_new;
-}
-    */
 
 /* parse CMD arguments and print result based on goal */
-/* Defined in 2.2 */
 int main(int argc, char* argv[]) {
     struct vector* curr_vec;
     struct node *head_node, *curr_node, *final_node;
@@ -466,7 +357,7 @@ int main(int argc, char* argv[]) {
 
     if (strcmp(goal, "sym") == 0) {
         A = sym(input_mat);
-        print_double_matrix(A, N, N);
+        print_double_matrix(A);
 
     } else if (strcmp(goal, "ddg") == 0) {
         D = ddg(input_mat);
@@ -488,7 +379,7 @@ int main(int argc, char* argv[]) {
 
     } else if (strcmp(goal, "norm") == 0) {
         W = norm(input_mat);
-        print_double_matrix(W, N, N);
+        print_double_matrix(W);
     }
 
     /* --------------- free memory --------------- */
