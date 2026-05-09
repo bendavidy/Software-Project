@@ -1,8 +1,8 @@
 #define PY_SSIZE_T_CLEAN
 #include "symnmf.h"
-#include <Python.h> // still works with the warning
+#include <Python.h> /* still works with the warning */
 
-// --------------- Global variables ---------------
+/* --------------- Global variables ---------------*/
 extern int N, K, d, iter;
 extern double **A, **W;
 extern double* D;
@@ -13,7 +13,7 @@ struct node* head_node;
 
 #pragma region C Functions
 
-// Given Python points and their dimensions, converts them to C vectors and returns head_vec and final_node for cleanup.
+/*Given Python points and their dimensions, converts them to C vectors and returns head_vec and final_node for cleanup.*/ 
 struct vector* convert_py_points_to_vectors(PyObject* points, int first_dim, int second_dim) {
     struct node* curr_node;
     struct vector* curr_vec;
@@ -30,10 +30,10 @@ struct vector* convert_py_points_to_vectors(PyObject* points, int first_dim, int
 
     for (int i = 0; i < first_dim; i++) {
         elem = PyList_GetItem(points, i);
-        // printf("%s%d%s%d%s%f\n", "i = ", i, ", first value of elem ", i, " is ", PyFloat_AsDouble(PyList_GetItem(elem, 0)));
+        /*printf("%s%d%s%d%s%f\n", "i = ", i, ", first value of elem ", i, " is ", PyFloat_AsDouble(PyList_GetItem(elem, 0)));*/
         for (int j = 0; j < second_dim - 1; j++) {
             node_value = PyFloat_AsDouble(PyList_GetItem(elem, j));
-            // printf("\t%s%d%s%f\n", "value in ", j, " place is ", node_value);
+            /* printf("\t%s%d%s%f\n", "value in ", j, " place is ", node_value);*/
             curr_node->value = node_value;
             curr_node->next = check_alloc(malloc(sizeof(struct node)));
             curr_node = curr_node->next;
@@ -46,7 +46,7 @@ struct vector* convert_py_points_to_vectors(PyObject* points, int first_dim, int
         curr_vec = curr_vec->next;
 
         curr_vec->next = NULL;
-        // curr_vec->next_in_cluster = NULL;
+        /*curr_vec->next_in_cluster = NULL;*/
         curr_vec->nodes = NULL; /*New line-Shalev*/
 
         head_node = check_alloc(malloc(sizeof(struct node)));
@@ -60,7 +60,7 @@ struct vector* convert_py_points_to_vectors(PyObject* points, int first_dim, int
     return head_vec;
 }
 
-// Given Python points and their dimensions, converts them to C double** and returns the pointer.
+/*Given Python points and their dimensions, converts them to C double** and returns the pointer.*/
 double** convert_py_points_to_matrix(PyObject* points, int first_dim, int second_dim) {
     double** C_mat = check_alloc(malloc(first_dim * sizeof(double*)));
 
@@ -76,32 +76,32 @@ double** convert_py_points_to_matrix(PyObject* points, int first_dim, int second
 
 PyObject* execute_C_func_from_data_points(PyObject* args, double** (*f)(double**)) {
     PyObject *data_points, *py_out;
-    //struct vector *curr_vec, *temp_vec;
+    /*struct vector *curr_vec, *temp_vec;*/
     //struct node* final_node;
     double **C_out_mat, **C_in_mat;
     double* C_out_arr;
 
     if (!PyArg_ParseTuple(args, "O", &data_points)) {
-        // Recieving the data points as a 2D Python array
+        /*Recieving the data points as a 2D Python array*/
         return NULL;
     }
 
-    // Inferring N,d
+    /*Inferring N,d*/
     N = PyList_Size(data_points);
     d = PyList_Size(PyList_GetItem(data_points, 0));
 
-    // Convert the python data to our vectors & nodes format
-    // head_vec = convert_py_points_to_vectors(data_points, N, d);
+    /*Convert the python data to our vectors & nodes format */
+     /*head_vec = convert_py_points_to_vectors(data_points, N, d); */
     C_in_mat = convert_py_points_to_matrix(data_points, N, d);
 
-    // TODO: make sure this doesnt break anything (freeing in the function instead of now)
-    // final_node = head_node; // for memory clearing
+    /*TODO: make sure this doesnt break anything (freeing in the function instead of now) */
+    /* // final_node = head_node; // for memory clearing  */
 
-    //if (out_dim == 2) {
-        // C Function call
+    /*if (out_dim == 2) {  */
+         /* C Function call */
         C_out_mat = f(C_in_mat);
 
-        // Converting our C_out_mat to a Python matrix
+        /*Converting our C_out_mat to a Python matrix  */
         py_out = PyList_New(N);
         for (int i = 0; i < N; i++) {
             PyList_SetItem(py_out, i, PyList_New(N));

@@ -31,7 +31,7 @@ def nmf_labels_from_h(H):
 
 
 def main():
-    #try:
+    try:
         if len(sys.argv) != 4:
             raise Exception()
 
@@ -45,7 +45,11 @@ def main():
             result = mysymnmf.sym(X)
 
         elif goal == "ddg":
-            result = mysymnmf.ddg(X)
+            diag = mysymnmf.ddg(X)
+            n = len(diag)
+            result = [[0.0] * n for i in range(n)]
+            for i in range(n):
+                result[i][i] = float(diag[i])
             # TODO: here result is a 1-D array representing the diagonal. need to make it a matrix before printing
 
         elif goal == "norm":
@@ -63,20 +67,10 @@ def main():
         else:
             raise Exception()
 
-        if goal != "ddg":
-            print_matrix(result)
-        else:
-            print(result)
-
-
-        print("111111111111111111111111111111")
-        if goal == "symnmf":
-            print(f"nmf: {score:.4f}")
+        print_matrix(result)
         
-
-
-    #except Exception:
-        #print("An Error Has Occurred")
+    except Exception:
+        print("An Error Has Occurred")
 
 
 if __name__ == "__main__": #if we run this script directly it will run main(), if we import this file it won't run main.
