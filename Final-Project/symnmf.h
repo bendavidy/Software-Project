@@ -39,7 +39,4 @@ double** norm(double** C_in);
 /* Defined in 1.4 */
 double** symnmf(double** H, double** W);
 
-/* given a pointer to head of linked list it will print the vector: f1,f2,...,fd */
-void print_vector_nodes(struct node* p);
-
 #endif
