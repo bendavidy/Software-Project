@@ -19,7 +19,7 @@ def run_analysis(k, input_file):
             ['python3', 'analysis.py', str(k), input_file],
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=300
         )
         
         if result.returncode != 0:

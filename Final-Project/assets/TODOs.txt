@@ -1,11 +1,16 @@
 General:
     - Function tests
-        [ ] From C main()
-        [ ] From Python
-    [ ] memory management
-    [ ] error handling EVERYWHERE - make sure every printf() is as it should
-    [ ] make sure all functino are declared in header file and there are no unnecessary definitions
-    [ ] go over TODOs
+        [X] From C main()
+        [X] From Python
+    [X] memory management - valgrind
+    [X] error handling EVERYWHERE - make sure every printf() is as it should
+    [X] make sure all functino are declared in header file and there are no unnecessary definitions
+    [X] go over TODOs
+    [X] correctness
+        [X] symnmfnmfnmf
+    [X] documentation
+    [X] ALL edge cases
+    [X] go over files and clean comments
 
 C implementation:
     [X] sym() - similarity matrix 1.1
