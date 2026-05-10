@@ -3,42 +3,25 @@ import math
 import numpy as np
 from sklearn.metrics import silhouette_score
 import mysymnmf
+from symnmf import read_points, init_h, nmf_labels_from_h
 
 MAX_ITER = 300
 EPS = 1e-4
 
-
-def terminate(msg):
-    print(msg)
-    sys.exit(1)
-
-
-def read_points(file_name):
-    points = np.loadtxt(file_name, delimiter=",", dtype=float) #numpy array of all the points
-    return points.tolist() #turnnnig the numpy array to python list
-
-
-def init_h(W, k):
-    np.random.seed(1234)
-    n = len(W)
-    m = np.mean(W)
-    upper_bound = 2 * np.sqrt(m / k)
-    H = np.random.uniform(0, upper_bound, size=(n, k))
-    return H.tolist()
-
-
-def nmf_labels_from_h(H): #return np array A s.t A[i] saying to which cluster the i'th data point belong to.
-    return np.argmax(np.array(H), axis=1) # Given the matrix H--> returns np array A s.t A[i] is the index of the max elem in the i'th row in H.
-
-
-def safe_silhouette(X, labels): #not sure if it is needed since num of clusterns are > 1 and < N
+def safe_silhouette(X, labels):
+    '''
+    Launches sklearn.metrics.silhouette_score() if we have more than a single unique label, otherwise returns None.
+    '''
     unique = len(set(labels))
-    if unique < 2 or unique >= len(X):
+    if unique < 2:
         return None
     return silhouette_score(np.array(X), labels)
 
 
-def find_minimal_dist_index(i, elements, centroids, K): #find the index of the centroid that has the min distance to i'th data point
+def find_minimal_dist_index(i, elements, centroids, K):
+    '''
+    Kmeans function: finds the index of the centroid that has the min distance to i'th data point
+    '''
     elem = elements[i] 
     min_dist = math.inf 
     min_dist_index = 0
@@ -51,12 +34,18 @@ def find_minimal_dist_index(i, elements, centroids, K): #find the index of the c
 
 
 
-def update_assignment(elements, centroids, assignments, N, K): #assign for each data point the cluster it belongs to
+def update_assignment(elements, centroids, assignments, N, K):
+    '''
+    Kmeans function: assigns for each data point the cluster it belongs to
+    '''
     for i in range(N):
         assignments[i] = find_minimal_dist_index(i, elements, centroids, K) 
 
 
-def update_centroids(elements, centroids, assignments, N, K, d): #This function recomputes each centroid from the points currently assigned to its cluster.
+def update_centroids(elements, centroids, assignments, N, K, d):
+    '''
+    Kmeans function: recomputes each centroid from the points currently assigned to its cluster
+    '''
     for j in range(K):
         j_cluster = [i for i in range(N) if assignments[i] == j]
         size = len(j_cluster)
@@ -67,17 +56,21 @@ def update_centroids(elements, centroids, assignments, N, K, d): #This function 
 
 
 def kmeans_labels(elements, K, max_iter, eps):
-    N = len(elements) #number of data points
+    '''
+    Kmeans function: runs the kmeans algorithm and returns the resulting assignments for the clusters.
+    assignments[i] is the cluster of the i'th data point.
+    '''
+    N = len(elements) # number of data points
     d = len(elements[0]) # each point dimension
 
-    assignments = [0 for i in range(N)] #[0 0 0 0 0 0 0 0 0 .... 0] N times
+    assignments = [0 for i in range(N)] # [0 0 0 0 0 0 0 0 0 .... 0] N times
     centroids = [elements[i][:] for i in range(K)] #make the initial centroids the first k data points 
 
     for i in range(max_iter): # In this project's case max_iter = 300
-        old_centroids = [c[:] for c in centroids] #go over each c in centroids and make a copy of it and put in old_centroids
+        old_centroids = [c[:] for c in centroids] # go over each c in centroids and make a copy of it and put in old_centroids
 
-        update_assignment(elements, centroids, assignments, N, K) #assign for each data point the cluster it belongs to in this iteration
-        update_centroids(elements, centroids, assignments, N, K, d) #update the centroids according to the data points that are currently in each cluster
+        update_assignment(elements, centroids, assignments, N, K) # assign for each data point the cluster it belongs to in this iteration
+        update_centroids(elements, centroids, assignments, N, K, d) # update the centroids according to the data points that are currently in each cluster
 
         max_shift = float("-inf") # Until convergence
         for j in range(K):
@@ -88,7 +81,7 @@ def kmeans_labels(elements, K, max_iter, eps):
         if max_shift < eps:
             break
 
-    return assignments # assignments[i] is the cluster of the i'th data point 
+    return assignments
 
 
 def main():
